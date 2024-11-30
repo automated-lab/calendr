@@ -1,9 +1,13 @@
+'use client'
+
 import { Dialog, DialogTrigger } from '@/components/ui/dialog'
 import React from 'react'
 import { Button } from '@/components/ui/button'
 import { DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import Image from 'next/image'
 import Logo from '@/public/logo.png'
+import { GoogleAuthButton } from './SubmitButtons'
+import { handleGoogleSignIn } from '../lib/authServer'
 
 export default function AuthModal() {
   return (
@@ -19,8 +23,12 @@ export default function AuthModal() {
                 </h4>
             </DialogHeader>
             <div className="flex flex-col my-5 gap-2">
-                <Button>Sign in with Google</Button>
-                <Button>Sign in with Github </Button>
+                <form action={handleGoogleSignIn} className='w-full'>
+                    <GoogleAuthButton />
+                </form>
+                <form className='w-full'>
+                    <Button type='submit' className='w-full'>Sign in with Github </Button>
+                </form>
             </div>
             <DialogTitle className="sr-only">Authentication</DialogTitle>
         </DialogContent>
