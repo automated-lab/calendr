@@ -3,7 +3,7 @@
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuItem } from "@/components/ui/dropdown-menu"
 import Image from "next/image"
 import Link from "next/link"
-import { handleSignOut } from "../actions/auth"
+import { handleSignOut } from "../actions/actions"
 
 interface UserNavProps {
   userImage: string | null | undefined

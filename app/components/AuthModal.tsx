@@ -11,7 +11,7 @@ import { GithubAuthButton, GoogleAuthButton } from './SubmitButtons'
 
 import Image from 'next/image'
 import Logo from '@/public/logo.png'
-import { handleGoogleSignIn, handleGithubSignIn } from '@/app/actions/auth'
+import { handleGoogleSignIn, handleGithubSignIn } from '@/app/actions/actions'
 
 export default function AuthModal() {
   return (
