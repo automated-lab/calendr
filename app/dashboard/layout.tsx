@@ -1,13 +1,23 @@
-'use client'
-
 import Link from 'next/link'
 import React, { ReactNode } from 'react'
 import Image from 'next/image'
 import Logo from '@/public/logo.png'
 import { DashboardLinks } from '../components/DashboardLinks'
+import { MenuIcon } from 'lucide-react'
+import { Sheet, SheetTrigger, SheetContent, SheetTitle } from '@/components/ui/sheet'
+import { Button } from '@/components/ui/button'
+import { ThemeToggle } from '../components/ThemeToggle'
+import { auth } from '../lib/auth'
+import { UserNav } from "@/app/components/UserNav"
 
-export default function DashboardLayout({ children }: {children: ReactNode}) {
+export default async function DashboardLayout({ 
+    children,
+}: {
+    children: ReactNode;
+}) {
+    const session = await auth();
   return (
+    <>
     <div className="min-h-screen w-full grid md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
         <div className="hidden md:block border-r bg-muted/40">
             <div className="flex h-full max-h-screen flex-col gap-2">
@@ -24,7 +34,28 @@ export default function DashboardLayout({ children }: {children: ReactNode}) {
                 </div>
             </div>
         </div>
-        <div>{children}</div>
+        <div className="flex flex-col w-full">
+            <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px]">
+                <Sheet>
+                    <SheetTrigger asChild>
+                        <Button variant="secondary" size="icon" className="md:hidden rounded-full">
+                            <MenuIcon className="size-5" />
+                        </Button>
+                    </SheetTrigger>
+                    <SheetContent side="left" className="flex flex-col gap-2">
+                        <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
+                        <nav className="grid gap-2 mt-10">
+                            <DashboardLinks />
+                        </nav>
+                    </SheetContent>
+                </Sheet>
+                <div className="ml-auto flex items-center gap-4">
+                    <ThemeToggle />
+                    <UserNav userImage={session?.user?.image} />
+                </div>
+            </header>
+           </div>
     </div>
+    </>
   )
 }

@@ -20,6 +20,7 @@ export default function AuthModal() {
             <Button>Try for Free</Button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-[360px]">
+            <DialogTitle className="sr-only">Sign in to Calendr</DialogTitle>
             <DialogHeader className="flex flex-row items-center gap-2 justify-center">
                 <Image src={Logo} alt="logo" className="size-10" />
                 <h4 className="font-semibold text-xl">
@@ -34,7 +35,6 @@ export default function AuthModal() {
                     <GithubAuthButton />
                 </form>
             </div>
-            <DialogTitle className="sr-only">Authentication</DialogTitle>
         </DialogContent>
     </Dialog>
   )
