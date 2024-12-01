@@ -1,7 +1,6 @@
 'use client'
 
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuItem } from "@/components/ui/dropdown-menu"
-import { Button } from "@/components/ui/button"
 import Image from "next/image"
 import Link from "next/link"
 import { handleSignOut } from "../actions/auth"
@@ -22,21 +21,17 @@ export function UserNav({ userImage }: UserNavProps) {
           className="rounded-full cursor-pointer"
         />
       </DropdownMenuTrigger>
-      <DropdownMenuContent>
+      <DropdownMenuContent align="end" className="w-[200px] gap-2">
             <DropdownMenuLabel>
                 My Account
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-                <Link href="/dashboard/settings">
-                    Settings
-                </Link>
+                <Link href="/dashboard/settings">Settings</Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-                <form className="w-full" action={handleSignOut}>
-                    <Button type="submit" variant="ghost" className="w-full text-left">
-                        Log Out
-                    </Button>
+                <form action={handleSignOut}>
+                    <button className="w-full text-left">Log Out</button>
                 </form>
             </DropdownMenuItem>
       </DropdownMenuContent>

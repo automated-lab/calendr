@@ -7,15 +7,15 @@ import { MenuIcon } from 'lucide-react'
 import { Sheet, SheetTrigger, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '../components/ThemeToggle'
-import { auth } from '../lib/auth'
 import { UserNav } from "@/app/components/UserNav"
+import { requireUser } from '../lib/hooks'
 
 export default async function DashboardLayout({ 
     children,
 }: {
     children: ReactNode;
 }) {
-    const session = await auth();
+    const session = await requireUser();
   return (
     <>
     <div className="min-h-screen w-full grid md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
@@ -54,6 +54,9 @@ export default async function DashboardLayout({
                     <UserNav userImage={session?.user?.image} />
                 </div>
             </header>
+            <main className="flex-1 flex flex-col gap-4 p-4 lg:gap-6 lg:p-6">
+                {children}
+            </main>
            </div>
     </div>
     </>

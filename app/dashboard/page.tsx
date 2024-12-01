@@ -1,5 +1,3 @@
-import { redirect } from "next/navigation";
-import { auth } from "../lib/auth";
 import { requireUser } from "../lib/hooks";
 
 
