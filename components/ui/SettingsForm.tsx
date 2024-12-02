@@ -11,6 +11,10 @@ import { settingsSchema } from "@/app/lib/zodSchemas";
 import { parseWithZod } from "@conform-to/zod";
 import { useState } from "react";
 import Image from "next/image";
+import { X } from "lucide-react";
+import { Button } from "./button";
+import { UploadDropzone } from "@/app/lib/uploadthing";
+import { toast } from "sonner";
 
 interface iAppProps {
     fullName: string;
@@ -33,6 +37,10 @@ export default function SettingsForm({ fullName, profileImage, email }: iAppProp
         shouldValidate: 'onBlur',
         shouldRevalidate: 'onInput',
     });
+
+    const handleDeleteImage = () => {
+        setCurrentProfileImage("");
+    }
     return (
         <Card>
             <CardHeader>
@@ -54,13 +62,42 @@ export default function SettingsForm({ fullName, profileImage, email }: iAppProp
                         <Label htmlFor="email">Email</Label>
                         <Input disabled defaultValue={email} id="email" name="email" />
                     </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="profileImage">Profile Image</Label>
+                    <div className="grid gap-5">
+                        <Label htmlFor="profileImage">
+                            Profile Image
+                        </Label>
+                        <input 
+                            type="hidden"
+                            name={fields.profileImage.name}
+                            key={fields.profileImage.key}
+                            value={currentProfileImage}
+                        />
                         {currentProfileImage ? (
-                            <Image src={currentProfileImage} alt="Profile Image" width={50} height={50} className="rounded-lg" />
+
+                            <div className="relative size-16" >
+                                <Image src={currentProfileImage} alt="Profile Image" width={50} height={50} className="rounded-lg" />
+                                <Button
+                                    onClick={handleDeleteImage}
+                                    variant="outline"
+                                    size="icon"
+                                    type="button"
+                                    className="absolute -top-3 -right-3"
+                                >
+                                    <X className="size-1" />
+                                </Button>
+                            </div>
                         ) : (
-                            <p>No profile image</p>
+                            <UploadDropzone onClientUploadComplete={(res) => {
+                                setCurrentProfileImage(res[0].url);
+                                toast.success("Profile image updated successfully");
+                            }}
+                                onUploadError={(error) => {
+                                    console.log("Something went wrong", error);
+                                    toast.error(error.message);
+                                }}
+                                endpoint="imageUploader" />
                         )}
+                        <p className="text-red-500 text-sm">{fields.profileImage.errors}</p>
                     </div>
                 </CardContent>
                 <CardFooter>

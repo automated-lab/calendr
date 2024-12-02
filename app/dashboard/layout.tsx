@@ -11,6 +11,7 @@ import { UserNav } from "@/app/components/UserNav"
 import { requireUser } from '../lib/hooks'
 import { redirect } from 'next/navigation'
 import prisma from '../lib/db'
+import { Toaster } from '@/components/ui/sonner'
 
 async function getData(userId: string) {
     const data = await prisma.user.findUnique({
@@ -84,6 +85,7 @@ export default async function DashboardLayout({
             </main>
            </div>
     </div>
+    <Toaster richColors closeButton />
     </>
   )
 }

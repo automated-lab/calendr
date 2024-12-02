@@ -11,6 +11,7 @@ const nextConfig = {
         hostname: 'avatars.githubusercontent.com',  // Also add GitHub for GitHub auth
       }
     ],
+    domains: ['utfs.io'],
   },
 }
 
