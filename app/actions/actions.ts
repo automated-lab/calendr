@@ -3,8 +3,9 @@
 import prisma from '../lib/db'
 import { requireUser } from '../lib/hooks'
 import { parseWithZod } from '@conform-to/zod'
-import { onboardingSchema } from '../lib/zodSchemas'
 import { signIn, signOut } from '../lib/auth'
+import { onBoardingSchemaValidation } from '../lib/zodSchemas'
+import { redirect } from 'next/navigation'
 
 export async function handleGoogleSignIn() {
   await signIn("google")
@@ -23,20 +24,31 @@ export async function OnboardingAction(
   formData: FormData
 ) {
   const session = await requireUser();
-  const submission = parseWithZod(formData, { schema: onboardingSchema });
+  const submission = await parseWithZod(formData, {
+    schema: onBoardingSchemaValidation({
+      async isUsernameUnique() {
+        const existingUsername = await prisma.user.findUnique({
+          where: { username: formData.get('userName') as string },
+        });
+        return !existingUsername;
+      },
+    }),
+
+    async: true,
+  });
 
   if(submission.status !== 'success') {
     return submission.reply();
   }
 
-  if (submission.status === 'success') {
-    await prisma.user.update({
-      where: { id: session.user?.id },
+   const data = await prisma.user.update({
+      where: {
+        id: session.user?.id,
+      },
       data: {
         name: submission.value.fullName,
         username: submission.value.userName,
       }
-    })
-  }
-  return submission.reply();
+    });
+  return redirect('/dashboard');
 } 
