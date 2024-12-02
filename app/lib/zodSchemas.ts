@@ -33,3 +33,8 @@ export function onBoardingSchemaValidation(options?: {
         fullName: z.string().min(3, { message: 'Name must contain at least 3 characters' }).max(50, { message: 'Name must be less than 50 characters' }),
     });
 }
+
+export const settingsSchema = z.object({
+    fullName: z.string().min(3, { message: 'Name must contain at least 3 characters' }).max(50, { message: 'Name must be less than 50 characters' }),
+    profileImage: z.string(),
+});
