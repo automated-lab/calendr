@@ -41,14 +41,15 @@ export async function OnboardingAction(
     return submission.reply();
   }
 
-   const data = await prisma.user.update({
-      where: {
-        id: session.user?.id,
-      },
-      data: {
-        name: submission.value.fullName,
-        username: submission.value.userName,
-      }
-    });
-  return redirect('/dashboard');
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const data = await prisma.user.update({
+    where: {
+      id: session.user?.id,
+    },
+    data: {
+      name: submission.value.fullName,
+      username: submission.value.userName,
+    }
+  });
+  return redirect('/onboarding/grant-id');
 } 
