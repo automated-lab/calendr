@@ -1,21 +1,19 @@
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
+import { requireUser } from "@/app/lib/hooks";
+import prisma from "@/app/lib/db";
+import AvailabilityForm from "./AvailabilityForm";
 
-
-export default function AvailabilityRoute() {
-    return (
-    <Card className="p-4">
-        <CardHeader>        
-            <CardTitle>Availability</CardTitle>
-            <CardDescription>
-                Manage your availability settings here.
-            </CardDescription>
-        </CardHeader>
-        <form>
-            <CardContent>
-
-            </CardContent>
-        </form>
-    </Card>
-    )
+async function getData(userId: string) {
+  const data = await prisma.availability.findMany({
+    where: {
+      userId: userId,
+    },
+  });
+  return data;
 }
 
+export default async function AvailabilityPage() {
+  const session = await requireUser();
+  const data = await getData(session.user?.id as string);
+  
+  return <AvailabilityForm initialData={data} />;
+}
