@@ -48,7 +48,7 @@ export async function OnboardingAction(
     },
     data: {
       name: submission.value.fullName,
-      username: submission.value.userName,
+      username: submission.value.username,
     }
   });
   return redirect('/onboarding/grant-id');

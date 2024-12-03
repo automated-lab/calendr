@@ -15,28 +15,31 @@ export async function GET(req: NextRequest) {
     return Response.json({ error: "No authorization code returned" }, { status: 400 });
  }
 
- try  {
-    const response = await nylas.auth.exchangeCodeForToken({
-        clientSecret: nylasConfig.apiKey,
-        clientId: nylasConfig.clientId,
-        redirectUri: nylasConfig.redirectUri,
-        code: code
-    });
+ const codeExchangePayload = {
+    clientSecret: nylasConfig.apiKey,
+    clientId: nylasConfig.clientId as string,
+    redirectUri: nylasConfig.redirectUri,
+    code,
+  };
 
+  try {
+    const response = await nylas.auth.exchangeCodeForToken(codeExchangePayload);
     const { grantId, email } = response;
 
     await prisma.user.update({
-        where: {
-            id: session.user?.id as string
-        },
-        data: {
-            grantId: grantId,
-            grantEmail: email
-        },
+      where: {
+        id: session.user?.id as string,
+      },
+      data: {
+        grantId: grantId,
+        grantEmail: email,
+      },
     });
- } catch (error) {
-    console.log("Something went wrong", error);
- }
 
- redirect("/dashboard");
+    console.log({ grantId });
+  } catch (error) {
+    console.error("Error exchanging code for token:", error);
+  }
+
+  redirect("/dashboard");
 }

@@ -27,7 +27,7 @@ async function getData(userId: string) {
         redirect('/onboarding');
     }
 
-    if(data?.grantId) {
+    if(!data?.grantId) {
         redirect('/onboarding/grant-id');
     }
     return data;

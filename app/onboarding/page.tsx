@@ -11,6 +11,7 @@ import { parseWithZod } from '@conform-to/zod'
 import { SubmitButton } from "../components/SubmitButtons";
 
 
+
 export default function OnboardingRoute() {
   const [lastResult, action] = useActionState(OnboardingAction, undefined);
 
@@ -47,9 +48,9 @@ export default function OnboardingRoute() {
             <Label>Username</Label>
             <div className="flex rounded-md">
               <span className="inline-flex items-center px-3 rounded-l-md border-r-0 border-muted bg-muted text-sm text-muted-foreground">calendr.com/</span>
-              <Input name={fields.userName.name} defaultValue={fields.userName.initialValue} key={fields.userName.key} placeholder="Your Username" className="rounded-l-none" />
+              <Input name={fields.username.name} defaultValue={fields.username.initialValue} key={fields.username.key} placeholder="Your Username" className="rounded-l-none" />
             </div>
-            <p className="text-red-500 text-xs">{fields.userName.errors}</p>
+            <p className="text-red-500 text-xs">{fields.username.errors}</p>
           </div>
         </CardContent>
         <CardFooter>
