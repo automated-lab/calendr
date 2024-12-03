@@ -7,26 +7,31 @@ import { Switch } from "@/components/ui/switch";
 import { times } from "@/app/lib/times";
 import { updateAvailabilityAction } from "@/app/actions/actions";
 
+
 interface Availability {
   id: string;
   day: string;
-  fromTime: Date;
-  toTime: Date;
+  fromTime: string;
+  toTime: string;
   isActive: boolean;
 }
 
 export default function AvailabilityForm({ initialData }: { initialData: Availability[] }) {
   const [availabilities, setAvailabilities] = useState(initialData);
 
-  const handleSwitchChange = async (id: string, checked: boolean) => {
-    const availability = availabilities.find(a => a.id === id);
-    if (!availability) return;
+  const formatUTC = (isoString: string) => {
+    const date = new Date(isoString);
+    const hours = date.getUTCHours().toString().padStart(2, '0');
+    const minutes = date.getUTCMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
+  }
 
+  const handleSwitchChange = async (id: string, checked: boolean) => {
     const updates = {
       id,
       isActive: checked,
-      fromTime: availability.fromTime.toISOString(),
-      toTime: availability.toTime.toISOString()
+      fromTime: availabilities.find(a => a.id === id)?.fromTime,
+      toTime: availabilities.find(a => a.id === id)?.toTime
     };
 
     const formData = new FormData();
@@ -45,16 +50,17 @@ export default function AvailabilityForm({ initialData }: { initialData: Availab
     const availability = availabilities.find(a => a.id === id);
     if (!availability) return;
 
-    const [hours, minutes] = value.split(':');
-    const date = new Date(availability[type]);
-    date.setHours(parseInt(hours, 10));
-    date.setMinutes(parseInt(minutes, 10));
+    const [hours, minutes] = value.split(':').map(Number);
+    const date = new Date();
+    date.setUTCHours(hours, minutes, 0, 0);
+
+    const updatedTime = date.toISOString();
 
     const updates = {
       id,
       isActive: availability.isActive,
-      fromTime: type === 'fromTime' ? date.toISOString() : availability.fromTime.toISOString(),
-      toTime: type === 'toTime' ? date.toISOString() : availability.toTime.toISOString()
+      fromTime: type === 'fromTime' ? updatedTime : availability.fromTime,
+      toTime: type === 'toTime' ? updatedTime : availability.toTime
     };
 
     const formData = new FormData();
@@ -64,7 +70,7 @@ export default function AvailabilityForm({ initialData }: { initialData: Availab
 
     setAvailabilities(prev => 
       prev.map(item => 
-        item.id === id ? { ...item, [type]: date } : item
+        item.id === id ? { ...item, [type]: updatedTime } : item
       )
     );
   };
@@ -76,51 +82,56 @@ export default function AvailabilityForm({ initialData }: { initialData: Availab
         <CardDescription>Set your weekly availability</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-y-4">
-        {availabilities.map((item) => (
-          <div key={item.id} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 items-center gap-4">
-            <div className="flex items-center gap-x-3">
-              <Switch 
-                checked={item.isActive}
-                onCheckedChange={(checked) => handleSwitchChange(item.id, checked)}
-              />
-              <p>{item.day}</p>
+        {availabilities.map((item) => {
+          const fromTime = formatUTC(item.fromTime);
+          const toTime = formatUTC(item.toTime);
+
+          return (
+            <div key={item.id} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 items-center gap-4">
+              <div className="flex items-center gap-x-3">
+                <Switch 
+                  checked={item.isActive}
+                  onCheckedChange={(checked) => handleSwitchChange(item.id, checked)}
+                />
+                <p>{item.day}</p>
+              </div>
+              <Select 
+                value={fromTime}
+                onValueChange={(value) => handleTimeChange(item.id, 'fromTime', value)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="From Time" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {times.map((time) => (
+                      <SelectItem key={time.id} value={time.time}>
+                        {time.time}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+              <Select 
+                value={toTime}
+                onValueChange={(value) => handleTimeChange(item.id, 'toTime', value)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="To Time" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {times.map((time) => (
+                      <SelectItem key={time.id} value={time.time}>
+                        {time.time}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
             </div>
-            <Select 
-              value={item.fromTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
-              onValueChange={(value) => handleTimeChange(item.id, 'fromTime', value)}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="From Time" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {times.map((time) => (
-                    <SelectItem key={time.id} value={time.time}>
-                      {time.time}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-            <Select 
-              value={item.toTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
-              onValueChange={(value) => handleTimeChange(item.id, 'toTime', value)}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="To Time" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {times.map((time) => (
-                    <SelectItem key={time.id} value={time.time}>
-                      {time.time}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
-          </div>
-        ))}
+          )
+        })}
       </CardContent>
       <CardFooter className="flex justify-end">
         <p className="text-sm text-muted-foreground">Changes are saved automatically</p>
