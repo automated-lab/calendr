@@ -38,3 +38,11 @@ export const settingsSchema = z.object({
     fullName: z.string().min(3, { message: 'Name must contain at least 3 characters' }).max(50, { message: 'Name must be less than 50 characters' }),
     profileImage: z.string(),
 });
+
+export const eventTypeSchema = z.object({
+    title: z.string().min(3).max(150),
+    duration: z.number().min(15).max(60),
+    url: z.string().min(3).max(150),
+    description: z.string().min(3).max(300),
+    videoCallSoftware: z.string().min(3)
+});
