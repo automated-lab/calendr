@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import Image from "next/image";
 import { CalendarX2, Clock, Video } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { RenderCalendar } from "@/app/components/bookingForm/RenderCalendar";
+import { TimeTable } from "@/app/components/bookingForm/TimeTable";
 
 async function getData(userName: string, eventUrl: string) {
   const data = await prisma.eventType.findFirst({
@@ -38,20 +40,63 @@ async function getData(userName: string, eventUrl: string) {
   if (!data) {
     return notFound();
   }
+
+  // Sort availability if it exists
+  if (data.User?.availability) {
+    const dayOrder = [
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+      "Sunday",
+    ];
+    data.User.availability.sort(
+      (a, b) => dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day)
+    );
+  }
+
   return data;
+}
+
+function getOrdinalSuffix(day: number) {
+  if (day > 3 && day < 21) return "th";
+  switch (day % 10) {
+    case 1:
+      return "st";
+    case 2:
+      return "nd";
+    case 3:
+      return "rd";
+    default:
+      return "th";
+  }
 }
 
 export default async function BookingFormRoute({
   params,
+  searchParams,
 }: {
   params: { username: string; eventUrl: string };
+  searchParams: { date?: string };
 }) {
-  const data = await getData(params.username, params.eventUrl);
+  const { username, eventUrl } = await params;
+  const { date } = await searchParams;
+  const data = await getData(username, eventUrl);
+  const selectedDate = date ? new Date(date) : new Date();
+
+  const day = selectedDate.getDate();
+  const formattedDate = `${new Intl.DateTimeFormat("en-US", {
+    weekday: "long",
+  }).format(selectedDate)}, ${new Intl.DateTimeFormat("en-US", {
+    month: "long",
+  }).format(selectedDate)} ${day}${getOrdinalSuffix(day)}`;
 
   return (
     <div className="flex items-center justify-center min-h-screen w-screen">
       <Card className="max-w-[1000px] w-full mx-auto">
-        <CardContent className="p-5 md:grid md:grid-cols-[1fr,auto,1fr,auto,1fr]">
+        <CardContent className="gap-4 p-5 md:grid md:grid-cols-[1fr,auto,1fr,auto,1fr]">
           <div className="flex flex-col gap-2">
             <Image
               src={data.User?.image as string}
@@ -71,7 +116,7 @@ export default async function BookingFormRoute({
               <p className="flex items-center">
                 <CalendarX2 className="size-4 mr-2 text-primary" />
                 <span className="text-sm font-medium text-muted-foreground">
-                  05/01/2025
+                  {formattedDate}
                 </span>
               </p>
               <p className="flex items-center">
@@ -89,6 +134,13 @@ export default async function BookingFormRoute({
             </div>
           </div>
           <Separator orientation="vertical" className="h-full w-[1px]" />
+          <RenderCalendar availability={data.User?.availability ?? []} />
+          <Separator orientation="vertical" className="h-full w-[1px]" />
+          <TimeTable
+            duration={data.duration}
+            selectedDate={selectedDate}
+            userName={username}
+          />
         </CardContent>
       </Card>
     </div>
