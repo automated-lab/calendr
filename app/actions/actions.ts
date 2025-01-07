@@ -13,6 +13,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { auth } from "../lib/auth";
 import { nylas } from "../lib/nylas";
+import { SubmissionResult } from "@conform-to/react";
 
 const providerMap = {
   "Google Meet": "Google Meet",
@@ -284,7 +285,7 @@ export async function cancelMeetingAction(formData: FormData) {
   if (!userData) {
     throw new Error("User not found");
   }
-
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const data = await nylas.events.destroy({
     eventId: formData.get("eventId") as string,
     identifier: userData?.grantId as string,
@@ -294,4 +295,74 @@ export async function cancelMeetingAction(formData: FormData) {
   });
 
   revalidatePath("/dashboard/meetings");
+}
+
+export async function editEventTypeAction(
+  prevState: SubmissionResult<string[]> | null,
+  formData: FormData
+): Promise<SubmissionResult<string[]>> {
+  const session = await requireUser();
+
+  const submission = parseWithZod(formData, {
+    schema: eventTypeSchema,
+  });
+
+  if (submission.status !== "success") {
+    return submission.reply();
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const data = await prisma.eventType.update({
+    where: {
+      id: formData.get("id") as string,
+      userId: session.user?.id as string,
+    },
+    data: {
+      title: submission.value.title,
+      duration: Number(submission.value.duration),
+      url: submission.value.url,
+      description: submission.value.description,
+      videoCallSoftware: submission.value.videoCallSoftware,
+    },
+  });
+
+  return redirect("/dashboard");
+}
+
+export async function updateEventTypeStatusAction(
+  prevState: unknown,
+  {
+    eventTypeId,
+    isChecked,
+  }: {
+    eventTypeId: string;
+    isChecked: boolean;
+  }
+) {
+  try {
+    const session = await requireUser();
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const data = await prisma.eventType.update({
+      where: {
+        id: eventTypeId,
+        userId: session.user?.id as string,
+      },
+      data: {
+        active: isChecked,
+      },
+    });
+
+    revalidatePath(`/dashboard`);
+    return {
+      status: "success",
+      message: "Event Status updated successfully",
+    };
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  } catch (error) {
+    return {
+      status: "error",
+      message: "Something went wrong",
+    };
+  }
 }

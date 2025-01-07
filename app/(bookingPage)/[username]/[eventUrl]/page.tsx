@@ -8,7 +8,7 @@ import { RenderCalendar } from "@/app/components/bookingForm/RenderCalendar";
 import { TimeTable } from "@/app/components/bookingForm/TimeTable";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { SubmitButton } from "@/app/components/SubmitButtons";
+import { SubmitButton } from "@/app/components/SubmitButton";
 import { createMeetingAction } from "@/app/actions/actions";
 
 async function getData(userName: string, eventUrl: string) {

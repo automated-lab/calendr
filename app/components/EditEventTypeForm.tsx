@@ -1,8 +1,5 @@
 "use client";
 
-import { createEventTypeAction } from "@/app/actions/actions";
-import { SubmitButton } from "@/app/components/SubmitButton";
-import { eventTypeSchema } from "@/app/lib/zodSchemas";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/ButtonGroup";
 import {
@@ -22,19 +19,41 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { useForm } from "@conform-to/react";
+import { SubmitButton } from "./SubmitButton";
+import { useActionState } from "react";
 import { parseWithZod } from "@conform-to/zod";
-import Link from "next/link";
-import { useActionState, useState } from "react";
+import { eventTypeSchema } from "../lib/zodSchemas";
+import { useForm } from "@conform-to/react";
+import { useState } from "react";
+import { editEventTypeAction } from "../actions/actions";
+import { Textarea } from "@/components/ui/textarea";
+import { useRouter } from "next/navigation";
 
 type videoCallProvider = "Google Meet" | "Zoom Meeting" | "Microsoft Teams";
 
-export default function NewEventRoute() {
-  const [activePlatform, setActivePlatform] =
-    useState<videoCallProvider>("Google Meet");
+interface iAppProps {
+  id: string;
+  title: string;
+  duration: number;
+  url: string;
+  description: string;
+  videoCallSoftware: string;
+  callProvider: string;
+}
 
-  const [lastResult, action] = useActionState(createEventTypeAction, undefined);
+export function EditEventTypeForm({
+  id,
+  title,
+  duration,
+  url,
+  description,
+  callProvider,
+}: iAppProps) {
+  const [activePlatform, setActivePlatform] = useState<videoCallProvider>(
+    callProvider as videoCallProvider
+  );
+
+  const [lastResult, action] = useActionState(editEventTypeAction, null);
   const [form, fields] = useForm({
     lastResult,
     onValidate({ formData }) {
@@ -46,28 +65,29 @@ export default function NewEventRoute() {
     shouldValidate: "onBlur",
     shouldRevalidate: "onInput",
   });
+
+  const router = useRouter();
+
   return (
     <div className="h-full w-full flex-1 flex flex-col items-center justify-center">
       <Card className="w-full max-w-2xl">
         <CardHeader>
-          <CardTitle>Create Event</CardTitle>
-          <CardDescription>
-            Create a new event for your organization.
-          </CardDescription>
-
+          <CardTitle>Edit Event</CardTitle>
+          <CardDescription>Edit your event.</CardDescription>
           <form
             id={form.id}
             onSubmit={form.onSubmit}
             action={action}
             noValidate
           >
+            <input type="hidden" name="id" value={id} />
             <CardContent className="grid gap-y-5">
               <div className="flex flex-col gap-y-2">
                 <Label>Title</Label>
                 <Input
                   name={fields.title.name}
                   key={fields.title.key}
-                  defaultValue={fields.title.initialValue}
+                  defaultValue={title}
                   placeholder="30-minute meeting"
                 />
                 <p className="text-xs text-red-500">{fields.title.errors}</p>
@@ -83,7 +103,7 @@ export default function NewEventRoute() {
                     placeholder="Example-url-1"
                     name={fields.url.name}
                     key={fields.url.key}
-                    defaultValue={fields.url.initialValue}
+                    defaultValue={url}
                   />
                 </div>
                 <p className="text-xs text-red-500">{fields.url.errors}</p>
@@ -95,7 +115,7 @@ export default function NewEventRoute() {
                   placeholder="Book me!"
                   name={fields.description.name}
                   key={fields.description.key}
-                  defaultValue={fields.description.initialValue}
+                  defaultValue={description}
                 />
                 <p className="text-xs text-red-500">
                   {fields.description.errors}
@@ -107,7 +127,7 @@ export default function NewEventRoute() {
                 <Select
                   name={fields.duration.name}
                   key={fields.duration.key}
-                  defaultValue={fields.duration.initialValue}
+                  defaultValue={duration.toString()}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select a duration" />
@@ -171,10 +191,14 @@ export default function NewEventRoute() {
               </div>
             </CardContent>
             <CardFooter className="flex w-full justify-between">
-              <Button type="button" variant="secondary" asChild>
-                <Link href="/dashboard">Cancel</Link>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => router.push("/dashboard")}
+              >
+                Cancel
               </Button>
-              <SubmitButton text="Create Event" />
+              <SubmitButton text="Update Event" />
             </CardFooter>
           </form>
         </CardHeader>
