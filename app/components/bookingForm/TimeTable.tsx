@@ -155,7 +155,10 @@ export async function TimeTable({
       <div className="mt-3 h-[350px] overflow-y-auto space-y-2 scrollbar-thin scrollbar-thumb-gray-200">
         {availableSlots.length > 0 ? (
           availableSlots.map((slot, index) => (
-            <Link key={index} href={`/booking/${slot}`}>
+            <Link
+              key={index}
+              href={`?date=${format(selectedDate, "yyyy-MM-dd")}&time=${slot}`}
+            >
               <Button variant="outline" className="w-full mb-2">
                 {slot}
               </Button>
