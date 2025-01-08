@@ -6,6 +6,7 @@ export async function GET() {
   const authURL = nylas.auth.urlForOAuth2({
     clientId: nylasConfig.clientId,
     redirectUri: nylasConfig.redirectUri,
+    provider: "google",
   });
   return redirect(authURL);
 }
