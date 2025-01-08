@@ -5,6 +5,7 @@ import { Navbar } from "./components/navbar";
 import { Testimonial } from "./components/Testimonials";
 import { auth } from "./lib/auth";
 import { redirect } from "next/navigation";
+import { Footer } from "./components/Footer";
 
 export default async function Home() {
   const session = await auth();
@@ -20,6 +21,7 @@ export default async function Home() {
       <Features />
       <Testimonial />
       <CTA />
+      <Footer />
     </div>
   );
 }
