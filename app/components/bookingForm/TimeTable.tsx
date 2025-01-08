@@ -94,6 +94,7 @@ function calculateAvailableTimeSlots(
     availableTo = addDays(availableTo, 1);
   }
 
+  //@ts-expect-error nylas data is not typed
   const busySlots = nylasData.data[0].timeSlots.map((slot) => ({
     start: fromUnixTime(slot.startTime),
     end: fromUnixTime(slot.endTime),

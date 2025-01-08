@@ -82,11 +82,13 @@ export default async function BookingFormRoute({
   params,
   searchParams,
 }: {
-  params: { username: string; eventUrl: string };
-  searchParams: { date?: string; time?: string };
+  params: Promise<{ username: string; eventUrl: string }>;
+  searchParams: Promise<{ date?: string; time?: string }>;
 }) {
-  const { username, eventUrl } = await params;
-  const { date, time } = await searchParams;
+  const resolvedParams = await params;
+  const resolvedSearchParams = await searchParams;
+  const { username, eventUrl } = resolvedParams;
+  const { date, time } = resolvedSearchParams;
   const data = await getData(username, eventUrl);
   const selectedDate = date ? new Date(date) : new Date();
 
@@ -145,8 +147,16 @@ export default async function BookingFormRoute({
               className="flex flex-col gap-y-2"
               action={createMeetingAction}
             >
-              <input type="hidden" name="fromTime" value={searchParams.time} />
-              <input type="hidden" name="eventDate" value={searchParams.date} />
+              <input
+                type="hidden"
+                name="fromTime"
+                value={resolvedSearchParams.time}
+              />
+              <input
+                type="hidden"
+                name="eventDate"
+                value={resolvedSearchParams.date}
+              />
               <input type="hidden" name="meetingLength" value={data.duration} />
               <input
                 type="hidden"
