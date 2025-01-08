@@ -20,7 +20,7 @@ export default function OnboardingGrantIdPage() {
         <CardHeader>
           <CardTitle></CardTitle>
           <CardDescription>
-            Please grant Calendr access to your Google Calendar
+            Please grant MyCalendar access to your Google Calendar
           </CardDescription>
           <Image
             src={VideoGif}

@@ -20,11 +20,11 @@ export default function AuthModal() {
         <Button>Try for Free</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[360px]">
-        <DialogTitle className="sr-only">Sign in to Calendr</DialogTitle>
+        <DialogTitle className="sr-only">Sign in to MyCalendar</DialogTitle>
         <DialogHeader className="flex flex-row items-center gap-2 justify-center">
           <Image src={Logo} alt="logo" className="size-10" />
           <h4 className="font-semibold text-xl">
-            Calend<span className="text-primary">r</span>
+            My<span className="text-primary">Calendar</span>
           </h4>
         </DialogHeader>
         <div className="flex flex-col my-5 gap-2">
