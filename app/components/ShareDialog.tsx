@@ -25,7 +25,6 @@ export function ShareDialog({ username, eventUrl }: ShareDialogProps) {
   height="800"
   frameBorder="0"
   style="border: none;"
-  allow="camera; microphone"
 ></iframe>`;
 
   return (

@@ -30,8 +30,12 @@ import { useActionState, useState } from "react";
 
 type videoCallProvider = "Google Meet" | "Zoom Meeting" | "Microsoft Teams";
 
+interface NewEventFormProps {
+  username: string;
+}
+
 // Client Component
-function NewEventForm({ username }: { username: string | undefined }) {
+function NewEventForm({ username }: NewEventFormProps) {
   const [activePlatform, setActivePlatform] =
     useState<videoCallProvider>("Google Meet");
   const [lastResult, action] = useActionState(createEventTypeAction, undefined);
