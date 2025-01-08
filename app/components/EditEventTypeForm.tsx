@@ -96,7 +96,7 @@ export function EditEventTypeForm({
                 <Label>URL Slug</Label>
                 <div className="flex rounded-md">
                   <span className="inline-flex items-center px-3 rounded-l-md border-r-0 border-muted bg-muted text-sm text-muted-foreground">
-                    okbook.me/
+                    heresmycalendar.com/
                   </span>
                   <Input
                     className="rounded-l-none"

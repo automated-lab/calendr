@@ -18,6 +18,7 @@ import { cancelMeetingAction } from "@/app/actions/actions";
 interface NylasEvent {
   id: string;
   title?: string;
+  description?: string;
   when: {
     startTime: number;
     endTime: number;
@@ -107,9 +108,9 @@ export default async function meetingRoute() {
                           ? format(fromUnixTime(item.when.endTime), "hh:mm a")
                           : "No time"}
                       </p>
-                      <div className="flex items-center gap-2 pt-1">
-                        <Video className="w-4 h-4" />
-                        {item.conferencing?.details?.url && (
+                      {item.conferencing?.details?.url ? (
+                        <div className="flex items-center gap-2 pt-1">
+                          <Video className="w-4 h-4" />
                           <a
                             href={item.conferencing.details.url}
                             target="_blank"
@@ -117,14 +118,32 @@ export default async function meetingRoute() {
                           >
                             Join Meeting
                           </a>
-                        )}
-                      </div>
+                        </div>
+                      ) : null}
                     </div>
 
                     <div className="flex flex-col">
                       <h2 className="text-sm font-medium">{item.title}</h2>
                       <p className="text-sm text-muted-foreground">
-                        You and {item.participants?.[0]?.name ?? "Guest"}
+                        {item.participants?.length > 0 && (
+                          <>
+                            {item.participants.map((p) => (
+                              <span key={p.email} className="block">
+                                <a
+                                  href={`mailto:${p.email}`}
+                                  className="hover:underline"
+                                >
+                                  {p.email}
+                                </a>
+                              </span>
+                            ))}
+                            {item.description && (
+                              <span className="block text-xs mt-2">
+                                {item.description}
+                              </span>
+                            )}
+                          </>
+                        )}
                       </p>
                     </div>
 
