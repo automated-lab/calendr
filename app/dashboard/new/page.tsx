@@ -30,10 +30,10 @@ import { useActionState, useState } from "react";
 
 type videoCallProvider = "Google Meet" | "Zoom Meeting" | "Microsoft Teams";
 
-export default function NewEventRoute() {
+// Client Component
+function NewEventForm({ username }: { username: string | undefined }) {
   const [activePlatform, setActivePlatform] =
     useState<videoCallProvider>("Google Meet");
-
   const [lastResult, action] = useActionState(createEventTypeAction, undefined);
   const [form, fields] = useForm({
     lastResult,
@@ -51,9 +51,7 @@ export default function NewEventRoute() {
       <Card className="w-full max-w-2xl">
         <CardHeader>
           <CardTitle>Create Event</CardTitle>
-          <CardDescription>
-            Create a new event for your organization.
-          </CardDescription>
+          <CardDescription>Create a new event.</CardDescription>
 
           <form
             id={form.id}
@@ -76,7 +74,7 @@ export default function NewEventRoute() {
                 <Label>URL Slug</Label>
                 <div className="flex rounded-md">
                   <span className="inline-flex items-center px-3 rounded-l-md border-r-0 border-muted bg-muted text-sm text-muted-foreground">
-                    okbook.me/
+                    heresmycalendar.com/{username}/
                   </span>
                   <Input
                     className="rounded-l-none"
@@ -182,3 +180,5 @@ export default function NewEventRoute() {
     </div>
   );
 }
+
+export default NewEventForm;

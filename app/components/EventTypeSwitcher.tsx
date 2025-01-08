@@ -28,17 +28,21 @@ export function EventTypeSwitcher({
   }, [state]);
 
   return (
-    <Switch
-      defaultChecked={initialChecked}
-      disabled={isPending}
-      onCheckedChange={(isChecked) => {
-        startTransition(() => {
-          action({
-            isChecked: isChecked,
-            eventTypeId,
+    <div className="flex items-center gap-2">
+      <span className="text-sm">Active</span>
+      <Switch
+        defaultChecked={initialChecked}
+        disabled={isPending}
+        className="scale-75"
+        onCheckedChange={(isChecked) => {
+          startTransition(() => {
+            action({
+              isChecked: isChecked,
+              eventTypeId,
+            });
           });
-        });
-      }}
-    />
+        }}
+      />
+    </div>
   );
 }

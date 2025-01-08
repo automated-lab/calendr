@@ -363,7 +363,7 @@ export async function updateEventTypeStatusAction(
     revalidatePath(`/dashboard`);
     return {
       status: "success",
-      message: "Event Status updated successfully",
+      message: isChecked ? "Event activated" : "Event deactivated",
     };
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {

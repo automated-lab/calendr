@@ -4,14 +4,7 @@ import { notFound } from "next/navigation";
 import { EmptyState } from "../components/EmptyState";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import {
-  ExternalLink,
-  Pen,
-  Pencil,
-  Settings,
-  Trash,
-  Users2,
-} from "lucide-react";
+import { ExternalLink, Pen, Settings, Trash, Users2 } from "lucide-react";
 import { EventTypeSwitcher } from "@/app/components/EventTypeSwitcher";
 import {
   DropdownMenu,
@@ -23,6 +16,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { CopyLinkMenuItem } from "@/app/components/CopyLinkMenu";
+import { CopyLinkButton } from "@/app/components/CopyLinkButton";
+import { ShareDialog } from "@/app/components/ShareDialog";
 
 async function getData(userId: string) {
   const data = await prisma.user.findUnique({
@@ -100,10 +95,17 @@ export default async function DashboardPage() {
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Event</DropdownMenuLabel>
                       <DropdownMenuSeparator />
+                      <DropdownMenuItem>
+                        <EventTypeSwitcher
+                          eventTypeId={item.id}
+                          initialChecked={item.active}
+                        />
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
                       <DropdownMenuGroup>
                         <DropdownMenuItem asChild>
                           <Link href={`/${data.username}/${item.url}`}>
-                            <ExternalLink className="mr-2size-4" />
+                            <ExternalLink className="mr-2 size-4" />
                             Preview
                           </Link>
                         </DropdownMenuItem>
@@ -116,8 +118,9 @@ export default async function DashboardPage() {
                             <span>Edit</span>
                           </Link>
                         </DropdownMenuItem>
+                        <DropdownMenuSeparator />
                       </DropdownMenuGroup>
-                      <DropdownMenuSeparator />
+
                       <DropdownMenuItem asChild>
                         <Link href={`/dashboard/event/${item.id}/delete`}>
                           <Trash className="mr-2 size-4" />
@@ -146,15 +149,13 @@ export default async function DashboardPage() {
                   </div>
                 </Link>
                 <div className="bg-muted/50 px-4 py-2 flex justify-between items-center">
-                  <EventTypeSwitcher
-                    eventTypeId={item.id}
-                    initialChecked={item.active}
+                  <CopyLinkButton
+                    url={`${process.env.NEXT_PUBLIC_URL}/${data.username}/${item.url}`}
                   />
-                  <Button asChild>
-                    <Link href={`/dashboard/event/${item.id}`}>
-                      <Pencil />
-                    </Link>
-                  </Button>
+                  <ShareDialog
+                    username={data.username || ""}
+                    eventUrl={item.url}
+                  />
                 </div>
               </div>
             ))}
