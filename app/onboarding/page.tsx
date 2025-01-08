@@ -35,7 +35,7 @@ export default function OnboardingRoute() {
       <Card>
         <CardHeader>
           <CardTitle>
-            Welcome to Calend<span className="text-primary">r</span>
+            Welcome to my<span className="text-primary">calendar</span>
           </CardTitle>
           <CardDescription className="pt-2">
             Let&apos;s get you started
@@ -57,7 +57,7 @@ export default function OnboardingRoute() {
               <Label>Username</Label>
               <div className="flex rounded-md">
                 <span className="inline-flex items-center px-3 rounded-l-md border-r-0 border-muted bg-muted text-sm text-muted-foreground">
-                  okbook.me/
+                  heresmycalendar.com/
                 </span>
                 <Input
                   name={fields.username.name}
