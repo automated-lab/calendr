@@ -1,4 +1,4 @@
-# MyCalendar
+# mycalendar
 
 A modern, open-source meeting scheduling platform built with Next.js 14.
 

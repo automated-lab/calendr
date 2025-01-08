@@ -9,17 +9,17 @@ export function Hero() {
       <div className="relative items-center w-full py-12 lg:py-20">
         <div className="text-center">
           <span className="text-sm text-primary font-medium tracking-tight bg-primary/10 px-4 py-2 rounded-full">
-            Introducing MyCalendar 1.0 🎉
+            Introducing mycalendar 1.0 🎉
           </span>
 
           <h1 className="mt-8 text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-medium leading-none">
-            Scheduling made{" "}
-            <span className="block text-primary">super easy!</span>
+            Super simple <span className="block text-primary">scheduling.</span>
           </h1>
 
           <p className="max-w-xl mx-auto mt-4   lg:text-lg text-muted-foreground ">
-            Scheduling a meeting can be a pain. But we at MyCalendar makes it
-            easy for your clients to schedule meetings with you.
+            Scheduling meetings can be a pain but mycalendar makes it easy.
+            Create an event, share a link and let your clients book times with
+            you.
           </p>
           <div className=" mt-5 mb-12">
             <AuthModal />

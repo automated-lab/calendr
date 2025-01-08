@@ -2,34 +2,34 @@ import { CloudRain } from "lucide-react";
 
 const features = [
   {
-    name: "Sign up for free",
+    name: "Free in Beta",
     description:
-      "Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna.",
+      "mycalendar is free while in Beta. No credit card required. When we launch, you will get the opportunity to use mycalendar free forever.",
     icon: CloudRain,
   },
   {
-    name: "Balzing fast",
+    name: "Blazing fast",
     description:
-      "Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna.",
+      "Schedule meetings in seconds, not minutes. Our streamlined interface eliminates back-and-forth emails and lets your clients book instantly based on your availability.",
     icon: CloudRain,
   },
   {
     name: "Super secure with Nylas",
     description:
-      "Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna.",
+      "Your calendar data is protected by enterprise-grade security. Powered by Nylas, we use OAuth 2.0 and never store your credentials, ensuring your information stays private.",
     icon: CloudRain,
   },
   {
     name: "Easy to use",
     description:
-      "Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna.",
+      "Share your booking link and let clients schedule meetings that work for everyone. Automatic timezone detection and calendar sync make scheduling effortless.",
     icon: CloudRain,
   },
 ];
 
 export function Features() {
   return (
-    <div className="py-24 ">
+    <div className="py-12 ">
       <div className="max-w-2xl mx-auto lg:text-center">
         <p className="font-semibold leading-7 text-primary">Schedule faster</p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">

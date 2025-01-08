@@ -10,9 +10,9 @@ export function Navbar() {
   return (
     <div className="flex justify-between items-center p-5">
       <Link href="/" className="flex items-center gap-2">
-        <Image src={Logo} alt="logo" className="size-10" />
-        <h4 className="font-semibold text-xl">
-          My<span className="text-zinc-500">Calendar</span>
+        <Image src={Logo} alt="logo" className="size-6 dark:invert" />
+        <h4 className="font-semibold text-2xl">
+          my<span className="text-primary">calendar</span>
         </h4>
       </Link>
       <div className="hidden md:flex md:justify-end md:space-x-4">

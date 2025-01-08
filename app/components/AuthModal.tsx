@@ -17,14 +17,14 @@ export default function AuthModal() {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button>Try for Free</Button>
+        <Button>Free while in Beta</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[360px]">
         <DialogTitle className="sr-only">Sign in to MyCalendar</DialogTitle>
         <DialogHeader className="flex flex-row items-center gap-2 justify-center">
           <Image src={Logo} alt="logo" className="size-10" />
           <h4 className="font-semibold text-xl">
-            My<span className="text-primary">Calendar</span>
+            my<span className="text-primary">calendar</span>
           </h4>
         </DialogHeader>
         <div className="flex flex-col my-5 gap-2">
