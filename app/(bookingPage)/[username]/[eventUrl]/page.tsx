@@ -179,7 +179,7 @@ export default async function BookingFormRoute({
         </Card>
       ) : (
         <Card className="max-w-[1000px] w-full mx-auto">
-          <CardContent className="gap-4 p-5 md:grid md:grid-cols-[1fr,auto,1fr,auto,1fr]">
+          <CardContent className="gap-4 p-5 md:grid md:grid-cols-[1fr,auto,1fr,auto,1fr] flex flex-col space-y-8 md:space-y-0">
             <div className="flex flex-col gap-2">
               <Image
                 src={data.User?.image as string}
@@ -216,9 +216,19 @@ export default async function BookingFormRoute({
                 </p>
               </div>
             </div>
-            <Separator orientation="vertical" className="h-full w-[1px]" />
+
+            <Separator
+              orientation="vertical"
+              className="h-full w-[1px] hidden md:block"
+            />
+
             <RenderCalendar availability={data.User?.availability ?? []} />
-            <Separator orientation="vertical" className="h-full w-[1px]" />
+
+            <Separator
+              orientation="vertical"
+              className="h-full w-[1px] hidden md:block"
+            />
+
             <TimeTable
               duration={data.duration}
               selectedDate={selectedDate}
