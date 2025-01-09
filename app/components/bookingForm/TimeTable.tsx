@@ -159,12 +159,26 @@ function calculateAvailableTimeSlots(
 
   const busySlots =
     nylasData.data[0]?.timeSlots?.map((slot: FreeBusyTimeSlot) => {
-      const start = fromUnixTime(slot.startTime);
-      const end = fromUnixTime(slot.endTime);
-      console.log(
-        `Busy slot: ${format(start, "HH:mm")} - ${format(end, "HH:mm")}`
+      // Convert UTC timestamps to user's timezone
+      const startUtc = fromUnixTime(slot.startTime);
+      const endUtc = fromUnixTime(slot.endTime);
+
+      // Format in user's timezone then parse back to Date
+      const startLocal = parse(
+        formatInTimeZone(startUtc, timezone, "yyyy-MM-dd HH:mm"),
+        "yyyy-MM-dd HH:mm",
+        new Date()
       );
-      return { start, end };
+      const endLocal = parse(
+        formatInTimeZone(endUtc, timezone, "yyyy-MM-dd HH:mm"),
+        "yyyy-MM-dd HH:mm",
+        new Date()
+      );
+
+      console.log(
+        `Busy slot (${timezone}): ${format(startLocal, "HH:mm")} - ${format(endLocal, "HH:mm")}`
+      );
+      return { start: startLocal, end: endLocal };
     }) || [];
 
   const allSlots = [];
