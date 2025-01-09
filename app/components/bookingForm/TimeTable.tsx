@@ -76,13 +76,18 @@ async function getData(selectedDate: Date, username: string) {
 
   try {
     const nylasCalendarData = await nylas.calendars.getFreeBusy({
-      identifier: "/me/",
+      identifier: data.User.grantId,
       requestBody: {
         startTime: Math.floor(startOfDay.getTime() / 1000),
         endTime: Math.floor(endOfDay.getTime() / 1000),
         emails: [data.User.grantEmail],
       },
     });
+
+    console.log(
+      "Nylas Calendar Data:",
+      JSON.stringify(nylasCalendarData, null, 2)
+    );
 
     return {
       data,
@@ -121,7 +126,10 @@ function calculateAvailableTimeSlots(
   duration: number,
   timezone: string
 ) {
+  // Create now in the user's timezone
   const now = new Date();
+  const userNow = formatInTimeZone(now, timezone, "yyyy-MM-dd HH:mm");
+  const userNowDate = parse(userNow, "yyyy-MM-dd HH:mm", new Date());
 
   if (!dbAvailability.fromTime || !dbAvailability.toTime) {
     return [];
@@ -144,11 +152,20 @@ function calculateAvailableTimeSlots(
     availableToLocal = addDays(availableToLocal, 1);
   }
 
+  console.log(
+    "Busy Slots Raw:",
+    JSON.stringify(nylasData.data[0]?.timeSlots, null, 2)
+  );
+
   const busySlots =
-    nylasData.data[0]?.timeSlots?.map((slot: FreeBusyTimeSlot) => ({
-      start: fromUnixTime(slot.startTime),
-      end: fromUnixTime(slot.endTime),
-    })) || [];
+    nylasData.data[0]?.timeSlots?.map((slot: FreeBusyTimeSlot) => {
+      const start = fromUnixTime(slot.startTime);
+      const end = fromUnixTime(slot.endTime);
+      console.log(
+        `Busy slot: ${format(start, "HH:mm")} - ${format(end, "HH:mm")}`
+      );
+      return { start, end };
+    }) || [];
 
   const allSlots = [];
   let currentSlot = availableFromLocal;
@@ -160,30 +177,29 @@ function calculateAvailableTimeSlots(
   const freeSlots = allSlots.filter((slot) => {
     const slotEnd = addMinutes(slot, duration);
 
-    // Check if slot is in the past (including the full duration)
-    if (!isAfter(slotEnd, now)) {
+    // Check if slot is in the past using user's timezone
+    if (!isAfter(slot, userNowDate)) {
+      console.log(`Slot ${format(slot, "HH:mm")} is in the past`);
       return false;
     }
 
     // Check for overlap with busy slots
-    return !busySlots.some((busy: { start: Date; end: Date }) => {
-      // Check if there's any overlap between the slot and the busy period
+    const isOverlapping = busySlots.some((busy: { start: Date; end: Date }) => {
       const hasOverlap =
-        // Slot starts during busy period
-        ((isAfter(slot, busy.start) ||
-          slot.getTime() === busy.start.getTime()) &&
-          isBefore(slot, busy.end)) ||
-        // Slot ends during busy period
-        (isAfter(slotEnd, busy.start) &&
-          (isBefore(slotEnd, busy.end) ||
-            slotEnd.getTime() === busy.end.getTime())) ||
-        // Slot completely contains busy period
-        ((isBefore(slot, busy.start) ||
-          slot.getTime() === busy.start.getTime()) &&
-          (isAfter(slotEnd, busy.end) ||
-            slotEnd.getTime() === busy.end.getTime()));
+        (isAfter(slot, busy.start) && isBefore(slot, busy.end)) || // Slot starts during busy period
+        (isAfter(slotEnd, busy.start) && isBefore(slotEnd, busy.end)) || // Slot ends during busy period
+        (isBefore(slot, busy.start) && isAfter(slotEnd, busy.end)); // Slot contains busy period
+
+      if (hasOverlap) {
+        console.log(
+          `Slot ${format(slot, "HH:mm")} overlaps with busy period ${format(busy.start, "HH:mm")} - ${format(busy.end, "HH:mm")}`
+        );
+      }
+
       return hasOverlap;
     });
+
+    return !isOverlapping;
   });
 
   // Format times in the user's timezone
