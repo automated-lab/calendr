@@ -152,32 +152,37 @@ async function calculateAvailableTimeSlots(
     availableToLocal = addDays(availableToLocal, 1);
   }
 
+  console.log("Processing date:", date);
+  console.log("User timezone:", timezone);
   console.log(
-    "Busy Slots Raw:",
+    "Raw busy slots:",
     JSON.stringify(nylasData.data[0]?.timeSlots, null, 2)
   );
 
   const busySlots =
     nylasData.data[0]?.timeSlots?.map((slot: FreeBusyTimeSlot) => {
-      // Convert UTC timestamps to user's timezone
+      // First convert UTC timestamps to dates
       const startUtc = fromUnixTime(slot.startTime);
       const endUtc = fromUnixTime(slot.endTime);
 
-      // Format in user's timezone then parse back to Date
-      const startLocal = parse(
-        formatInTimeZone(startUtc, timezone, "yyyy-MM-dd HH:mm"),
-        "yyyy-MM-dd HH:mm",
-        new Date()
-      );
-      const endLocal = parse(
-        formatInTimeZone(endUtc, timezone, "yyyy-MM-dd HH:mm"),
-        "yyyy-MM-dd HH:mm",
-        new Date()
+      console.log(
+        `Original UTC slot: ${format(startUtc, "yyyy-MM-dd HH:mm")} - ${format(endUtc, "yyyy-MM-dd HH:mm")}`
       );
 
-      console.log(
-        `Busy slot (${timezone}): ${format(startLocal, "HH:mm")} - ${format(endLocal, "HH:mm")}`
+      // Convert to user's timezone while preserving the actual time
+      const startInTz = formatInTimeZone(
+        startUtc,
+        timezone,
+        "yyyy-MM-dd HH:mm"
       );
+      const endInTz = formatInTimeZone(endUtc, timezone, "yyyy-MM-dd HH:mm");
+
+      console.log(`Timezone adjusted slot: ${startInTz} - ${endInTz}`);
+
+      // Parse back to Date objects
+      const startLocal = parse(startInTz, "yyyy-MM-dd HH:mm", new Date());
+      const endLocal = parse(endInTz, "yyyy-MM-dd HH:mm", new Date());
+
       return { start: startLocal, end: endLocal };
     }) || [];
 
@@ -190,10 +195,11 @@ async function calculateAvailableTimeSlots(
 
   const freeSlots = allSlots.filter((slot) => {
     const slotEnd = addMinutes(slot, duration);
+    const slotTime = format(slot, "HH:mm");
 
     // Check if slot is in the past using user's timezone
     if (!isAfter(slot, userNowDate)) {
-      console.log(`Slot ${format(slot, "HH:mm")} is in the past`);
+      console.log(`Slot ${slotTime} is in the past`);
       return false;
     }
 
@@ -202,11 +208,13 @@ async function calculateAvailableTimeSlots(
       const hasOverlap =
         (isAfter(slot, busy.start) && isBefore(slot, busy.end)) || // Slot starts during busy period
         (isAfter(slotEnd, busy.start) && isBefore(slotEnd, busy.end)) || // Slot ends during busy period
-        (isBefore(slot, busy.start) && isAfter(slotEnd, busy.end)); // Slot contains busy period
+        (isBefore(slot, busy.start) && isAfter(slotEnd, busy.end)) || // Slot contains busy period
+        slot.getTime() === busy.start.getTime() || // Slot starts exactly at busy start
+        slotEnd.getTime() === busy.end.getTime(); // Slot ends exactly at busy end
 
       if (hasOverlap) {
         console.log(
-          `Slot ${format(slot, "HH:mm")} overlaps with busy period ${format(busy.start, "HH:mm")} - ${format(busy.end, "HH:mm")}`
+          `Slot ${slotTime} overlaps with busy period ${format(busy.start, "HH:mm")} - ${format(busy.end, "HH:mm")}`
         );
       }
 
@@ -217,9 +225,7 @@ async function calculateAvailableTimeSlots(
   });
 
   // Format times in the user's timezone
-  return freeSlots.map((slot) => {
-    return formatInTimeZone(slot, timezone, "HH:mm");
-  });
+  return freeSlots.map((slot) => formatInTimeZone(slot, timezone, "HH:mm"));
 }
 
 export async function TimeTable({
