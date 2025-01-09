@@ -165,7 +165,7 @@ export default async function BookingFormRoute({
               />
               <input type="hidden" name="username" value={username} />
               <input type="hidden" name="eventTypeId" value={data.id} />
-              <div className="flex flex-col gap-y-2">
+              <div className="flex flex-col gap-y-2 mt-8">
                 <Label>Name</Label>
                 <Input
                   name="name"
