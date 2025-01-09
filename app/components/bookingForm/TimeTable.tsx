@@ -139,14 +139,31 @@ async function calculateAvailableTimeSlots(
   timezone: string
 ) {
   const now = new Date();
+  const selectedDate = new Date(date);
 
   if (!dbAvailability.fromTime || !dbAvailability.toTime) {
     return [];
   }
 
-  // Use the UTC times directly from DB
-  const availableFromUtc = new Date(dbAvailability.fromTime);
-  let availableToUtc = new Date(dbAvailability.toTime);
+  // Use the UTC times directly from DB but adjust to selected date
+  const fromTime = new Date(dbAvailability.fromTime);
+  const toTime = new Date(dbAvailability.toTime);
+
+  const availableFromUtc = new Date(
+    selectedDate.getFullYear(),
+    selectedDate.getMonth(),
+    selectedDate.getDate(),
+    fromTime.getUTCHours(),
+    fromTime.getUTCMinutes()
+  );
+
+  let availableToUtc = new Date(
+    selectedDate.getFullYear(),
+    selectedDate.getMonth(),
+    selectedDate.getDate(),
+    toTime.getUTCHours(),
+    toTime.getUTCMinutes()
+  );
 
   // Handle day wraparound if needed
   if (availableToUtc < availableFromUtc) {
