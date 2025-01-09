@@ -14,6 +14,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "../lib/auth";
 import { nylas } from "../lib/nylas";
 import { SubmissionResult } from "@conform-to/react";
+import { sendEventCreatedEmail } from "../lib/resend";
 
 const providerMap = {
   "Google Meet": "Google Meet",
@@ -197,7 +198,7 @@ export async function createEventTypeAction(
     return submission.reply();
   }
 
-  await prisma.eventType.create({
+  const event = await prisma.eventType.create({
     data: {
       title: submission.value.title,
       duration: submission.value.duration,
@@ -206,6 +207,19 @@ export async function createEventTypeAction(
       videoCallSoftware: submission.value.videoCallSoftware,
       userId: session.user?.id,
     },
+  });
+
+  // Send email notification
+  const user = await prisma.user.findUnique({
+    where: { id: session.user?.id },
+    select: { username: true },
+  });
+
+  await sendEventCreatedEmail({
+    userEmail: session.user?.email as string,
+    username: session.user?.name as string,
+    eventTitle: event.title,
+    eventUrl: `${process.env.NEXT_PUBLIC_URL}/${user?.username}/${event.url}`,
   });
 
   return redirect("/dashboard");
