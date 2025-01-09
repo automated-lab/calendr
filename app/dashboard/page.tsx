@@ -57,18 +57,18 @@ export default async function DashboardPage() {
           title="No event types found"
           description="Get started by creating a new event type"
           buttonText="Create Event Type"
-          href="/dashboard/event-types/new"
+          href="/dashboard/new"
         />
       ) : (
         <>
           <div>
             <div className="flex justify-between items-center px-2">
               <div className="hidden sm:grid gap-y-1">
-                <h1 className="text-3xl md:text-4xl font-semibold">
+                <h1 className="text-3xl md:text-3xl font-semibold">
                   Event Types
                 </h1>
                 <p className="text-muted-foreground">
-                  Create and manage your event types here.
+                  Create and manage your events here.
                 </p>
               </div>
               <Button asChild>
@@ -104,7 +104,10 @@ export default async function DashboardPage() {
                       <DropdownMenuSeparator />
                       <DropdownMenuGroup>
                         <DropdownMenuItem asChild>
-                          <Link href={`/${data.username}/${item.url}`}>
+                          <Link
+                            href={`/${data.username}/${item.url}`}
+                            target="_blank"
+                          >
                             <ExternalLink className="mr-2 size-4" />
                             Preview
                           </Link>
