@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { format, parse } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 
@@ -17,24 +17,28 @@ export default function ClientTimeTable({
   availableSlotsHostTz,
   formattedDate,
 }: ClientTimeTableProps) {
-  const [clientTimezone, setClientTimezone] = useState<string>("UTC");
-  const [availableSlots, setAvailableSlots] =
-    useState<string[]>(availableSlotsHostTz);
+  const [clientTimezone, setClientTimezone] = useState<string>("");
 
+  // Get timezone only once on mount
   useEffect(() => {
-    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    setClientTimezone(timezone);
+    setClientTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone);
+  }, []);
 
-    const convertedSlots = availableSlotsHostTz.map((time) => {
+  // Memoize slot conversion to prevent unnecessary recalculations
+  const availableSlots = useMemo(() => {
+    if (!clientTimezone) return availableSlotsHostTz;
+
+    return availableSlotsHostTz.map((time) => {
       const dateInHostTz = parse(
         `${formattedDate} ${time}`,
         "yyyy-MM-dd HH:mm",
         new Date()
       );
-      return formatInTimeZone(dateInHostTz, timezone, "HH:mm");
+      return formatInTimeZone(dateInHostTz, clientTimezone, "HH:mm");
     });
-    setAvailableSlots(convertedSlots);
-  }, [availableSlotsHostTz, formattedDate]);
+  }, [availableSlotsHostTz, formattedDate, clientTimezone]);
+
+  if (!clientTimezone) return null;
 
   return (
     <div className="flex flex-col gap-y-2">

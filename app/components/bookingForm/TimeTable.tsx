@@ -32,12 +32,7 @@ interface NylasCalendarResponse {
 async function getData(selectedDate: Date, username: string) {
   const currentDay = format(selectedDate, "EEEE");
 
-  const startOfDay = new Date(selectedDate);
-  startOfDay.setHours(0, 0, 0, 0);
-
-  const endOfDay = new Date(selectedDate);
-  endOfDay.setHours(23, 59, 59, 999);
-
+  // Create start/end of day in user's timezone
   const data = await prisma.availability.findFirst({
     where: {
       day: currentDay as Prisma.EnumDayFilter,
@@ -74,20 +69,37 @@ async function getData(selectedDate: Date, username: string) {
     };
   }
 
+  const timezone = data.User.timezone || "UTC";
+
+  // Create start/end of day in user's timezone
+  const startOfDayLocal = parse(
+    format(selectedDate, "yyyy-MM-dd") + " 00:00",
+    "yyyy-MM-dd HH:mm",
+    new Date()
+  );
+  const endOfDayLocal = parse(
+    format(selectedDate, "yyyy-MM-dd") + " 23:59",
+    "yyyy-MM-dd HH:mm",
+    new Date()
+  );
+
   try {
+    console.log(
+      `Fetching busy times for ${format(selectedDate, "yyyy-MM-dd")} in ${timezone}`
+    );
+    console.log(`Start time: ${format(startOfDayLocal, "yyyy-MM-dd HH:mm")}`);
+    console.log(`End time: ${format(endOfDayLocal, "yyyy-MM-dd HH:mm")}`);
+
     const nylasCalendarData = await nylas.calendars.getFreeBusy({
       identifier: data.User.grantId,
       requestBody: {
-        startTime: Math.floor(startOfDay.getTime() / 1000),
-        endTime: Math.floor(endOfDay.getTime() / 1000),
+        startTime: Math.floor(startOfDayLocal.getTime() / 1000),
+        endTime: Math.floor(endOfDayLocal.getTime() / 1000),
         emails: [data.User.grantEmail],
       },
     });
 
-    console.log(
-      "Nylas Calendar Data:",
-      JSON.stringify(nylasCalendarData, null, 2)
-    );
+    console.log("Nylas Response:", JSON.stringify(nylasCalendarData, null, 2));
 
     return {
       data,
