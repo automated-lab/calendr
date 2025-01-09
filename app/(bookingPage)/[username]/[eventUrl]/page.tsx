@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import prisma from "@/app/lib/db";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Image from "next/image";
 import { CalendarX2, Clock, Video } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { SubmitButton } from "@/app/components/SubmitButton";
 import { createMeetingAction } from "@/app/actions/actions";
+import { format } from "date-fns";
 
 async function getData(userName: string, eventUrl: string) {
   const data = await prisma.eventType.findFirst({
@@ -78,19 +79,28 @@ function getOrdinalSuffix(day: number) {
   }
 }
 
-export default async function BookingFormRoute({
-  params,
+interface PageProps {
+  params: {
+    username: string;
+    eventUrl: string;
+  };
+  searchParams: { date?: string; time?: string };
+}
+
+export default async function EventTypePage({
+  params: { username, eventUrl },
   searchParams,
-}: {
-  params: Promise<{ username: string; eventUrl: string }>;
-  searchParams: Promise<{ date?: string; time?: string }>;
-}) {
-  const resolvedParams = await params;
-  const resolvedSearchParams = await searchParams;
-  const { username, eventUrl } = resolvedParams;
-  const { date, time } = resolvedSearchParams;
+}: PageProps) {
+  // If no date is provided, redirect to today's date
+  if (!searchParams.date) {
+    const today = format(new Date(), "yyyy-MM-dd");
+    return redirect(`/${username}/${eventUrl}?date=${today}`);
+  }
+
   const data = await getData(username, eventUrl);
-  const selectedDate = date ? new Date(date) : new Date();
+  const selectedDate = searchParams.date
+    ? new Date(searchParams.date)
+    : new Date();
 
   const day = selectedDate.getDate();
   const formattedDate = `${new Intl.DateTimeFormat("en-US", {
@@ -99,7 +109,7 @@ export default async function BookingFormRoute({
     month: "long",
   }).format(selectedDate)} ${day}${getOrdinalSuffix(day)}`;
 
-  const showForm = !!date && !!time;
+  const showForm = !!searchParams.date && !!searchParams.time;
 
   return (
     <div className="flex items-center justify-center min-h-screen w-screen">
@@ -147,16 +157,8 @@ export default async function BookingFormRoute({
               className="flex flex-col gap-y-2"
               action={createMeetingAction}
             >
-              <input
-                type="hidden"
-                name="fromTime"
-                value={resolvedSearchParams.time}
-              />
-              <input
-                type="hidden"
-                name="eventDate"
-                value={resolvedSearchParams.date}
-              />
+              <input type="hidden" name="fromTime" value={searchParams.time} />
+              <input type="hidden" name="eventDate" value={searchParams.date} />
               <input type="hidden" name="meetingLength" value={data.duration} />
               <input
                 type="hidden"

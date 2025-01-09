@@ -19,29 +19,29 @@ interface iAppProps {
 }
 
 export function RenderCalendar({ availability }: iAppProps) {
-  console.log(availability);
   const router = useRouter();
   const searchParams = useSearchParams();
+  const dateParam = searchParams.get("date");
 
   const [date, setDate] = useState<CalendarDate>(() => {
-    const dateParam = searchParams.get("date");
+    // If we have a date in URL, use it, otherwise use today
     return dateParam ? parseDate(dateParam) : today(getLocalTimeZone());
   });
 
+  // Update URL when component mounts if no date is set
   useEffect(() => {
-    const dateParam = searchParams.get("date");
-    if (dateParam) {
-      setDate(parseDate(dateParam));
+    if (!dateParam) {
+      const todayStr = today(getLocalTimeZone()).toString();
+      const url = new URL(window.location.href);
+      url.searchParams.set("date", todayStr);
+      router.replace(url.toString());
     }
-  }, [searchParams]);
+  }, [dateParam, router]);
 
   const handleChangeDate = (date: DateValue) => {
-    console.log(date);
     setDate(date as CalendarDate);
     const url = new URL(window.location.href);
-
     url.searchParams.set("date", date.toString());
-
     router.push(url.toString());
   };
 
@@ -57,7 +57,6 @@ export function RenderCalendar({ availability }: iAppProps) {
       "Saturday",
     ];
     const dayName = dayNames[dayOfWeek];
-
     const dayAvailability = availability.find((a) => a.day === dayName);
     return !dayAvailability?.isActive;
   };
@@ -65,7 +64,7 @@ export function RenderCalendar({ availability }: iAppProps) {
   return (
     <Calendar
       minValue={today(getLocalTimeZone())}
-      defaultValue={today(getLocalTimeZone())}
+      defaultValue={date}
       value={date}
       onChange={handleChangeDate}
       isDateUnavailable={isDateUnavailable}
