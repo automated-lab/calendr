@@ -15,6 +15,7 @@ import { auth } from "../lib/auth";
 import { nylas } from "../lib/nylas";
 import { SubmissionResult } from "@conform-to/react";
 import { sendEventCreatedEmail } from "../lib/resend";
+import { Day } from "@prisma/client";
 
 const providerMap = {
   "Google Meet": "Google Meet",
@@ -55,6 +56,63 @@ export async function OnboardingAction(
     return submission.reply();
   }
 
+  // Check for existing availability records
+  const existingAvailability = await prisma.availability.findMany({
+    where: {
+      userId: session.user?.id,
+    },
+  });
+
+  // Only create availability if none exists
+  const availabilityData = existingAvailability.length === 0 ? {
+    createMany: {
+      data: [
+        {
+          day: Day.Monday,
+          fromTime: new Date("1970-01-01T08:00:00Z").toISOString(),
+          toTime: new Date("1970-01-01T18:00:00Z").toISOString(),
+          isActive: true,
+        },
+        {
+          day: Day.Tuesday,
+          fromTime: new Date("1970-01-01T08:00:00Z").toISOString(),
+          toTime: new Date("1970-01-01T18:00:00Z").toISOString(),
+          isActive: true,
+        },
+        {
+          day: Day.Wednesday,
+          fromTime: new Date("1970-01-01T08:00:00Z").toISOString(),
+          toTime: new Date("1970-01-01T18:00:00Z").toISOString(),
+          isActive: true,
+        },
+        {
+          day: Day.Thursday,
+          fromTime: new Date("1970-01-01T08:00:00Z").toISOString(),
+          toTime: new Date("1970-01-01T18:00:00Z").toISOString(),
+          isActive: true,
+        },
+        {
+          day: Day.Friday,
+          fromTime: new Date("1970-01-01T08:00:00Z").toISOString(),
+          toTime: new Date("1970-01-01T18:00:00Z").toISOString(),
+          isActive: true,
+        },
+        {
+          day: Day.Saturday,
+          fromTime: new Date("1970-01-01T08:00:00Z").toISOString(),
+          toTime: new Date("1970-01-01T18:00:00Z").toISOString(),
+          isActive: true,
+        },
+        {
+          day: Day.Sunday,
+          fromTime: new Date("1970-01-01T08:00:00Z").toISOString(),
+          toTime: new Date("1970-01-01T18:00:00Z").toISOString(),
+          isActive: true,
+        },
+      ],
+    },
+  } : undefined;
+
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const data = await prisma.user.update({
     where: {
@@ -63,56 +121,10 @@ export async function OnboardingAction(
     data: {
       name: submission.value.fullName,
       username: submission.value.username,
-      availability: {
-        createMany: {
-          data: [
-            {
-              day: "Monday",
-              fromTime: new Date("1970-01-01T08:00:00Z").toISOString(),
-              toTime: new Date("1970-01-01T18:00:00Z").toISOString(),
-              isActive: true,
-            },
-            {
-              day: "Tuesday",
-              fromTime: new Date("1970-01-01T08:00:00Z").toISOString(),
-              toTime: new Date("1970-01-01T18:00:00Z").toISOString(),
-              isActive: true,
-            },
-            {
-              day: "Wednesday",
-              fromTime: new Date("1970-01-01T08:00:00Z").toISOString(),
-              toTime: new Date("1970-01-01T18:00:00Z").toISOString(),
-              isActive: true,
-            },
-            {
-              day: "Thursday",
-              fromTime: new Date("1970-01-01T08:00:00Z").toISOString(),
-              toTime: new Date("1970-01-01T18:00:00Z").toISOString(),
-              isActive: true,
-            },
-            {
-              day: "Friday",
-              fromTime: new Date("1970-01-01T08:00:00Z").toISOString(),
-              toTime: new Date("1970-01-01T18:00:00Z").toISOString(),
-              isActive: true,
-            },
-            {
-              day: "Saturday",
-              fromTime: new Date("1970-01-01T08:00:00Z").toISOString(),
-              toTime: new Date("1970-01-01T18:00:00Z").toISOString(),
-              isActive: true,
-            },
-            {
-              day: "Sunday",
-              fromTime: new Date("1970-01-01T08:00:00Z").toISOString(),
-              toTime: new Date("1970-01-01T18:00:00Z").toISOString(),
-              isActive: true,
-            },
-          ],
-        },
-      },
+      availability: availabilityData,
     },
   });
+
   return redirect("/onboarding/grant-id");
 }
 
@@ -121,7 +133,8 @@ export async function SettingsAction(
   formData: FormData
 ) {
   const session = await requireUser();
-  const submission = parseWithZod(formData, {
+
+  const submission = await parseWithZod(formData, {
     schema: settingsSchema,
   });
 
@@ -130,16 +143,20 @@ export async function SettingsAction(
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const user = await prisma.user.update({
+  const data = await prisma.user.update({
     where: {
       id: session.user?.id,
     },
     data: {
       name: submission.value.fullName,
       image: submission.value.profileImage,
+      timezone: submission.value.timezone,
     },
   });
-  return redirect("/dashboard");
+
+  revalidatePath("/dashboard/settings");
+
+  return submission.reply();
 }
 
 export async function updateAvailabilityAction(formData: FormData) {
@@ -233,6 +250,7 @@ export async function createMeetingAction(formData: FormData) {
     select: {
       grantEmail: true,
       grantId: true,
+      timezone: true,
     },
   });
 
@@ -255,9 +273,12 @@ export async function createMeetingAction(formData: FormData) {
   const eventDate = formData.get("eventDate") as string;
   const provider = formData.get("provider") as string;
 
-  const startDateTime = new Date(`${eventDate}T${formTime}:00`);
-
-  // Calculate the end time by adding the meeting length (in minutes) to the start time
+  // Create a local datetime string and parse it in the user's timezone
+  const localDateTime = `${eventDate}T${formTime}:00`;
+  const userTimezone = getUserData.timezone || 'UTC';
+  
+  // Convert to UTC for storage
+  const startDateTime = new Date(`${localDateTime}Z`);
   const endDateTime = new Date(startDateTime.getTime() + meetingLength * 60000);
 
   await nylas.events.create({
@@ -268,6 +289,7 @@ export async function createMeetingAction(formData: FormData) {
       when: {
         startTime: Math.floor(startDateTime.getTime() / 1000),
         endTime: Math.floor(endDateTime.getTime() / 1000),
+        timezone: userTimezone,
       },
       conferencing: {
         autocreate: {},

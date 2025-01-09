@@ -12,6 +12,7 @@ async function getData(id: string) {
             name: true,
             email: true,
             image: true,
+            timezone: true,
         },
     });
 
@@ -25,7 +26,12 @@ export default async function SettingsRoute() {
     const session = await requireUser();
     const data = await getData(session.user?.id as string);
     return (
-            <SettingsForm email={data.email} fullName={data.name as string} profileImage={data.image as string} />
+            <SettingsForm 
+                email={data.email} 
+                fullName={data.name as string} 
+                profileImage={data.image as string} 
+                timezone={data.timezone}
+            />
     )
 }
 

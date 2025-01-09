@@ -10,9 +10,24 @@ import {
 } from "date-fns";
 import { Prisma } from "@prisma/client";
 import { nylas } from "@/app/lib/nylas";
-import { GetFreeBusyResponse } from "nylas";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { formatInTimeZone } from 'date-fns-tz';
+
+interface FreeBusyTimeSlot {
+  startTime: number;
+  endTime: number;
+}
+
+interface FreeBusyData {
+  email: string;
+  timeSlots: FreeBusyTimeSlot[];
+  object: 'free_busy';
+}
+
+interface NylasCalendarResponse {
+  data: FreeBusyData[];
+}
 
 async function getData(selectedDate: Date, username: string) {
   const currentDay = format(selectedDate, "EEEE");
@@ -38,24 +53,52 @@ async function getData(selectedDate: Date, username: string) {
         select: {
           grantEmail: true,
           grantId: true,
+          timezone: true,
         },
       },
     },
   });
 
-  const nylasCalendarData = await nylas.calendars.getFreeBusy({
-    identifier: data?.User?.grantId as string,
-    requestBody: {
-      startTime: Math.floor(startOfDay.getTime() / 1000),
-      endTime: Math.floor(endOfDay.getTime() / 1000),
-      emails: [data?.User?.grantEmail as string],
-    },
-  });
+  if (!data?.User?.grantId || !data?.User?.grantEmail) {
+    return {
+      data,
+      nylasCalendarData: {
+        data: [{
+          email: data?.User?.grantEmail || '',
+          timeSlots: [],
+          object: 'free_busy'
+        }] as FreeBusyData[]
+      }
+    };
+  }
 
-  return {
-    data,
-    nylasCalendarData,
-  };
+  try {
+    const nylasCalendarData = await nylas.calendars.getFreeBusy({
+      identifier: data.User.grantId,
+      requestBody: {
+        startTime: Math.floor(startOfDay.getTime() / 1000),
+        endTime: Math.floor(endOfDay.getTime() / 1000),
+        emails: [data.User.grantEmail],
+      },
+    });
+
+    return {
+      data,
+      nylasCalendarData: nylasCalendarData as NylasCalendarResponse,
+    };
+  } catch (error) {
+    console.error("Nylas API Error:", error);
+    return {
+      data,
+      nylasCalendarData: {
+        data: [{
+          email: data.User.grantEmail,
+          timeSlots: [],
+          object: 'free_busy'
+        }] as FreeBusyData[]
+      }
+    };
+  }
 }
 
 interface iAppProps {
@@ -70,39 +113,41 @@ function calculateAvailableTimeSlots(
     fromTime: string | undefined;
     toTime: string | undefined;
   },
-  nylasData: {
-    data: GetFreeBusyResponse[];
-  },
-  duration: number
+  nylasData: NylasCalendarResponse,
+  duration: number,
+  timezone: string
 ) {
   const now = new Date();
 
-  // Parse times from HH:mm format
-  const availableFrom = parse(
-    `${date} ${dbAvailability.fromTime}`,
-    "yyyy-MM-dd HH:mm",
-    new Date()
-  );
-
-  let availableTo = parse(
-    `${date} ${dbAvailability.toTime}`,
-    "yyyy-MM-dd HH:mm",
-    new Date()
-  );
-
-  if (availableTo < availableFrom) {
-    availableTo = addDays(availableTo, 1);
+  if (!dbAvailability.fromTime || !dbAvailability.toTime) {
+    return [];
   }
 
-  //@ts-expect-error nylas data is not typed
-  const busySlots = nylasData.data[0].timeSlots.map((slot) => ({
+  // Parse times from HH:mm format in the user's timezone
+  const availableFromLocal = parse(
+    `${date} ${format(new Date(dbAvailability.fromTime), 'HH:mm')}`,
+    "yyyy-MM-dd HH:mm",
+    new Date()
+  );
+
+  let availableToLocal = parse(
+    `${date} ${format(new Date(dbAvailability.toTime), 'HH:mm')}`,
+    "yyyy-MM-dd HH:mm",
+    new Date()
+  );
+
+  if (availableToLocal < availableFromLocal) {
+    availableToLocal = addDays(availableToLocal, 1);
+  }
+
+  const busySlots = nylasData.data[0]?.timeSlots?.map((slot: FreeBusyTimeSlot) => ({
     start: fromUnixTime(slot.startTime),
     end: fromUnixTime(slot.endTime),
-  }));
+  })) || [];
 
   const allSlots = [];
-  let currentSlot = availableFrom;
-  while (isBefore(currentSlot, availableTo)) {
+  let currentSlot = availableFromLocal;
+  while (isBefore(currentSlot, availableToLocal)) {
     allSlots.push(currentSlot);
     currentSlot = addMinutes(currentSlot, duration);
   }
@@ -120,7 +165,10 @@ function calculateAvailableTimeSlots(
     );
   });
 
-  return freeSlots.map((slot) => format(slot, "HH:mm"));
+  // Format times in the user's timezone
+  return freeSlots.map((slot) => {
+    return formatInTimeZone(slot, timezone, 'HH:mm');
+  });
 }
 
 export async function TimeTable({
@@ -129,19 +177,19 @@ export async function TimeTable({
   duration,
 }: iAppProps) {
   const { data, nylasCalendarData } = await getData(selectedDate, userName);
-  console.log(nylasCalendarData.data[0]);
 
   const formattedDate = format(selectedDate, "yyyy-MM-dd");
   const dbAvailability = {
-    fromTime: data?.fromTime ? format(data.fromTime, "HH:mm") : undefined,
-    toTime: data?.toTime ? format(data.toTime, "HH:mm") : undefined,
+    fromTime: data?.fromTime?.toISOString(),
+    toTime: data?.toTime?.toISOString(),
   };
 
   const availableSlots = calculateAvailableTimeSlots(
     formattedDate,
     dbAvailability,
     nylasCalendarData,
-    duration
+    duration,
+    data?.User?.timezone || 'UTC'
   );
 
   return (

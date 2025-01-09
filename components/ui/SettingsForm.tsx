@@ -22,19 +22,29 @@ import { X } from "lucide-react";
 import { Button } from "./button";
 import { UploadDropzone } from "@/app/lib/uploadthing";
 import { toast } from "sonner";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./select";
 
 interface iAppProps {
   fullName: string;
   profileImage: string;
   email: string;
+  timezone: string;
 }
 
 export default function SettingsForm({
   fullName,
   profileImage,
   email,
+  timezone,
 }: iAppProps) {
-  const [lastResult, action] = useActionState(SettingsAction, undefined);
+  const [lastResult, action] = useActionState(SettingsAction, null);
   const [currentProfileImage, setCurrentProfileImage] = useState(profileImage);
   const [form, fields] = useForm({
     lastResult,
@@ -52,6 +62,10 @@ export default function SettingsForm({
   const handleDeleteImage = () => {
     setCurrentProfileImage("");
   };
+
+  // Get list of IANA timezone names
+  const timezones = Intl.supportedValuesOf('timeZone');
+
   return (
     <Card>
       <CardHeader>
@@ -73,6 +87,28 @@ export default function SettingsForm({
           <div className="flex flex-col gap-2">
             <Label htmlFor="email">Email</Label>
             <Input disabled defaultValue={email} id="email" name="email" />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="timezone">Timezone</Label>
+            <Select
+              name={fields.timezone.name}
+              key={fields.timezone.key}
+              defaultValue={timezone}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select your timezone" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {timezones.map((tz) => (
+                    <SelectItem key={tz} value={tz}>
+                      {tz}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            <p className="text-red-500 text-sm">{fields.timezone.errors}</p>
           </div>
           <div className="grid gap-5">
             <Label htmlFor="profileImage">Profile Image</Label>

@@ -1,31 +1,47 @@
 import { requireUser } from "@/app/lib/hooks";
 import prisma from "@/app/lib/db";
 import AvailabilityForm from "./AvailabilityForm";
-import { Availability } from "@prisma/client";
 
-type AvailabilityWithStringDates = Omit<Availability, 'fromTime' | 'toTime'> & {
-  fromTime: string;
-  toTime: string;
-};
+type Day = "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday" | "Sunday";
+
+interface Availability {
+  id: string;
+  day: Day;
+  fromTime: Date;
+  toTime: Date;
+  isActive: boolean;
+  userId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 async function getData(userId: string) {
-  const data = await prisma.availability.findMany({
+  const data = await prisma.user.findFirst({
     where: {
-      userId: userId,
+      id: userId,
+    },
+    select: {
+      timezone: true,
+      availability: true,
     },
   });
 
+  if (!data) return { timezone: "UTC", availability: [] };
+
   // Convert Date objects to strings
-  return data.map(item => ({
-    ...item,
-    fromTime: item.fromTime.toISOString(),
-    toTime: item.toTime.toISOString(),
-  }));
+  return {
+    timezone: data.timezone,
+    availability: data.availability.map((item: Availability) => ({
+      ...item,
+      fromTime: item.fromTime.toISOString(),
+      toTime: item.toTime.toISOString(),
+    }))
+  };
 }
 
 export default async function AvailabilityPage() {
   const session = await requireUser();
   const data = await getData(session.user?.id as string);
 
-  return <AvailabilityForm initialData={data as AvailabilityWithStringDates[]} />;
+  return <AvailabilityForm initialData={data.availability} userTimezone={data.timezone} />;
 }

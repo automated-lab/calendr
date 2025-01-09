@@ -19,6 +19,7 @@ model User {
   username      String?        @unique
   grantId       String?
   grantEmail    String?
+  timezone      String         @default("UTC")
   accounts      Account[]
   sessions      Session[]
   availability  Availability[]
