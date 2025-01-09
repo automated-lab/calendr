@@ -12,7 +12,7 @@ import { Prisma } from "@prisma/client";
 import { nylas } from "@/app/lib/nylas";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { formatInTimeZone } from 'date-fns-tz';
+import { formatInTimeZone } from "date-fns-tz";
 
 interface FreeBusyTimeSlot {
   startTime: number;
@@ -22,7 +22,7 @@ interface FreeBusyTimeSlot {
 interface FreeBusyData {
   email: string;
   timeSlots: FreeBusyTimeSlot[];
-  object: 'free_busy';
+  object: "free_busy";
 }
 
 interface NylasCalendarResponse {
@@ -63,18 +63,20 @@ async function getData(selectedDate: Date, username: string) {
     return {
       data,
       nylasCalendarData: {
-        data: [{
-          email: data?.User?.grantEmail || '',
-          timeSlots: [],
-          object: 'free_busy'
-        }] as FreeBusyData[]
-      }
+        data: [
+          {
+            email: data?.User?.grantEmail || "",
+            timeSlots: [],
+            object: "free_busy",
+          },
+        ] as FreeBusyData[],
+      },
     };
   }
 
   try {
     const nylasCalendarData = await nylas.calendars.getFreeBusy({
-      identifier: data.User.grantId,
+      identifier: "/me/",
       requestBody: {
         startTime: Math.floor(startOfDay.getTime() / 1000),
         endTime: Math.floor(endOfDay.getTime() / 1000),
@@ -91,12 +93,14 @@ async function getData(selectedDate: Date, username: string) {
     return {
       data,
       nylasCalendarData: {
-        data: [{
-          email: data.User.grantEmail,
-          timeSlots: [],
-          object: 'free_busy'
-        }] as FreeBusyData[]
-      }
+        data: [
+          {
+            email: data.User.grantEmail,
+            timeSlots: [],
+            object: "free_busy",
+          },
+        ] as FreeBusyData[],
+      },
     };
   }
 }
@@ -125,13 +129,13 @@ function calculateAvailableTimeSlots(
 
   // Parse times from HH:mm format in the user's timezone
   const availableFromLocal = parse(
-    `${date} ${format(new Date(dbAvailability.fromTime), 'HH:mm')}`,
+    `${date} ${format(new Date(dbAvailability.fromTime), "HH:mm")}`,
     "yyyy-MM-dd HH:mm",
     new Date()
   );
 
   let availableToLocal = parse(
-    `${date} ${format(new Date(dbAvailability.toTime), 'HH:mm')}`,
+    `${date} ${format(new Date(dbAvailability.toTime), "HH:mm")}`,
     "yyyy-MM-dd HH:mm",
     new Date()
   );
@@ -140,10 +144,11 @@ function calculateAvailableTimeSlots(
     availableToLocal = addDays(availableToLocal, 1);
   }
 
-  const busySlots = nylasData.data[0]?.timeSlots?.map((slot: FreeBusyTimeSlot) => ({
-    start: fromUnixTime(slot.startTime),
-    end: fromUnixTime(slot.endTime),
-  })) || [];
+  const busySlots =
+    nylasData.data[0]?.timeSlots?.map((slot: FreeBusyTimeSlot) => ({
+      start: fromUnixTime(slot.startTime),
+      end: fromUnixTime(slot.endTime),
+    })) || [];
 
   const allSlots = [];
   let currentSlot = availableFromLocal;
@@ -154,20 +159,36 @@ function calculateAvailableTimeSlots(
 
   const freeSlots = allSlots.filter((slot) => {
     const slotEnd = addMinutes(slot, duration);
-    return (
-      isAfter(slot, now) &&
-      !busySlots.some(
-        (busy: { start: Date; end: Date }) =>
-          (!isBefore(slot, busy.start) && isBefore(slot, busy.end)) ||
-          (isAfter(slotEnd, busy.start) && !isAfter(slotEnd, busy.end)) ||
-          (isBefore(slot, busy.start) && isAfter(slotEnd, busy.end))
-      )
-    );
+
+    // Check if slot is in the past (including the full duration)
+    if (!isAfter(slotEnd, now)) {
+      return false;
+    }
+
+    // Check for overlap with busy slots
+    return !busySlots.some((busy: { start: Date; end: Date }) => {
+      // Check if there's any overlap between the slot and the busy period
+      const hasOverlap =
+        // Slot starts during busy period
+        ((isAfter(slot, busy.start) ||
+          slot.getTime() === busy.start.getTime()) &&
+          isBefore(slot, busy.end)) ||
+        // Slot ends during busy period
+        (isAfter(slotEnd, busy.start) &&
+          (isBefore(slotEnd, busy.end) ||
+            slotEnd.getTime() === busy.end.getTime())) ||
+        // Slot completely contains busy period
+        ((isBefore(slot, busy.start) ||
+          slot.getTime() === busy.start.getTime()) &&
+          (isAfter(slotEnd, busy.end) ||
+            slotEnd.getTime() === busy.end.getTime()));
+      return hasOverlap;
+    });
   });
 
   // Format times in the user's timezone
   return freeSlots.map((slot) => {
-    return formatInTimeZone(slot, timezone, 'HH:mm');
+    return formatInTimeZone(slot, timezone, "HH:mm");
   });
 }
 
@@ -189,7 +210,7 @@ export async function TimeTable({
     dbAvailability,
     nylasCalendarData,
     duration,
-    data?.User?.timezone || 'UTC'
+    data?.User?.timezone || "UTC"
   );
 
   return (

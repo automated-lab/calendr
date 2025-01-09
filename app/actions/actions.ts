@@ -64,54 +64,57 @@ export async function OnboardingAction(
   });
 
   // Only create availability if none exists
-  const availabilityData = existingAvailability.length === 0 ? {
-    createMany: {
-      data: [
-        {
-          day: Day.Monday,
-          fromTime: new Date("1970-01-01T08:00:00Z").toISOString(),
-          toTime: new Date("1970-01-01T18:00:00Z").toISOString(),
-          isActive: true,
-        },
-        {
-          day: Day.Tuesday,
-          fromTime: new Date("1970-01-01T08:00:00Z").toISOString(),
-          toTime: new Date("1970-01-01T18:00:00Z").toISOString(),
-          isActive: true,
-        },
-        {
-          day: Day.Wednesday,
-          fromTime: new Date("1970-01-01T08:00:00Z").toISOString(),
-          toTime: new Date("1970-01-01T18:00:00Z").toISOString(),
-          isActive: true,
-        },
-        {
-          day: Day.Thursday,
-          fromTime: new Date("1970-01-01T08:00:00Z").toISOString(),
-          toTime: new Date("1970-01-01T18:00:00Z").toISOString(),
-          isActive: true,
-        },
-        {
-          day: Day.Friday,
-          fromTime: new Date("1970-01-01T08:00:00Z").toISOString(),
-          toTime: new Date("1970-01-01T18:00:00Z").toISOString(),
-          isActive: true,
-        },
-        {
-          day: Day.Saturday,
-          fromTime: new Date("1970-01-01T08:00:00Z").toISOString(),
-          toTime: new Date("1970-01-01T18:00:00Z").toISOString(),
-          isActive: true,
-        },
-        {
-          day: Day.Sunday,
-          fromTime: new Date("1970-01-01T08:00:00Z").toISOString(),
-          toTime: new Date("1970-01-01T18:00:00Z").toISOString(),
-          isActive: true,
-        },
-      ],
-    },
-  } : undefined;
+  const availabilityData =
+    existingAvailability.length === 0
+      ? {
+          createMany: {
+            data: [
+              {
+                day: Day.Monday,
+                fromTime: new Date("1970-01-01T08:00:00Z").toISOString(),
+                toTime: new Date("1970-01-01T18:00:00Z").toISOString(),
+                isActive: true,
+              },
+              {
+                day: Day.Tuesday,
+                fromTime: new Date("1970-01-01T08:00:00Z").toISOString(),
+                toTime: new Date("1970-01-01T18:00:00Z").toISOString(),
+                isActive: true,
+              },
+              {
+                day: Day.Wednesday,
+                fromTime: new Date("1970-01-01T08:00:00Z").toISOString(),
+                toTime: new Date("1970-01-01T18:00:00Z").toISOString(),
+                isActive: true,
+              },
+              {
+                day: Day.Thursday,
+                fromTime: new Date("1970-01-01T08:00:00Z").toISOString(),
+                toTime: new Date("1970-01-01T18:00:00Z").toISOString(),
+                isActive: true,
+              },
+              {
+                day: Day.Friday,
+                fromTime: new Date("1970-01-01T08:00:00Z").toISOString(),
+                toTime: new Date("1970-01-01T18:00:00Z").toISOString(),
+                isActive: true,
+              },
+              {
+                day: Day.Saturday,
+                fromTime: new Date("1970-01-01T08:00:00Z").toISOString(),
+                toTime: new Date("1970-01-01T18:00:00Z").toISOString(),
+                isActive: true,
+              },
+              {
+                day: Day.Sunday,
+                fromTime: new Date("1970-01-01T08:00:00Z").toISOString(),
+                toTime: new Date("1970-01-01T18:00:00Z").toISOString(),
+                isActive: true,
+              },
+            ],
+          },
+        }
+      : undefined;
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const data = await prisma.user.update({
@@ -275,8 +278,8 @@ export async function createMeetingAction(formData: FormData) {
 
   // Create a local datetime string and parse it in the user's timezone
   const localDateTime = `${eventDate}T${formTime}:00`;
-  const userTimezone = getUserData.timezone || 'UTC';
-  
+  const userTimezone = getUserData.timezone || "UTC";
+
   // Convert to UTC for storage
   const startDateTime = new Date(`${localDateTime}Z`);
   const endDateTime = new Date(startDateTime.getTime() + meetingLength * 60000);
