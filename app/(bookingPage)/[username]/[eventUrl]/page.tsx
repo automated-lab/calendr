@@ -79,27 +79,25 @@ function getOrdinalSuffix(day: number) {
   }
 }
 
-interface PageProps {
-  params: {
-    username: string;
-    eventUrl: string;
-  };
-  searchParams: { date?: string; time?: string };
+interface Props {
+  params: Promise<{ username: string; eventUrl: string }>;
+  searchParams: Promise<{ date?: string; time?: string }>;
 }
 
-export default async function EventTypePage({
-  params: { username, eventUrl },
-  searchParams,
-}: PageProps) {
+export default async function EventTypePage({ params, searchParams }: Props) {
+  const resolvedParams = await params;
+  const resolvedSearchParams = await searchParams;
+  const { username, eventUrl } = resolvedParams;
+
   // If no date is provided, redirect to today's date
-  if (!searchParams.date) {
+  if (!resolvedSearchParams.date) {
     const today = format(new Date(), "yyyy-MM-dd");
     return redirect(`/${username}/${eventUrl}?date=${today}`);
   }
 
   const data = await getData(username, eventUrl);
-  const selectedDate = searchParams.date
-    ? new Date(searchParams.date)
+  const selectedDate = resolvedSearchParams.date
+    ? new Date(resolvedSearchParams.date)
     : new Date();
 
   const day = selectedDate.getDate();
@@ -109,7 +107,7 @@ export default async function EventTypePage({
     month: "long",
   }).format(selectedDate)} ${day}${getOrdinalSuffix(day)}`;
 
-  const showForm = !!searchParams.date && !!searchParams.time;
+  const showForm = !!resolvedSearchParams.date && !!resolvedSearchParams.time;
 
   return (
     <div className="flex items-center justify-center min-h-screen w-screen">
@@ -157,8 +155,16 @@ export default async function EventTypePage({
               className="flex flex-col gap-y-2"
               action={createMeetingAction}
             >
-              <input type="hidden" name="fromTime" value={searchParams.time} />
-              <input type="hidden" name="eventDate" value={searchParams.date} />
+              <input
+                type="hidden"
+                name="fromTime"
+                value={resolvedSearchParams.time}
+              />
+              <input
+                type="hidden"
+                name="eventDate"
+                value={resolvedSearchParams.date}
+              />
               <input type="hidden" name="meetingLength" value={data.duration} />
               <input
                 type="hidden"
