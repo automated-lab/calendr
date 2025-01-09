@@ -46,7 +46,7 @@ export default function AuthModal() {
               </span>
             </div>
 
-            <div className="bg-muted/50 p-4 rounded-lg">
+            <div className="bg-muted/5 p-4 rounded-lg">
               <span className="block">
                 After that, you&apos;ll have the opportunity to continue with
                 mycalendar <span className="font-medium">free for life</span>{" "}

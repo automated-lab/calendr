@@ -17,6 +17,12 @@ import { requireUser } from "../lib/hooks";
 import { redirect } from "next/navigation";
 import prisma from "../lib/db";
 import { Toaster } from "@/components/ui/sonner";
+import { Poppins } from "next/font/google";
+
+const poppins = Poppins({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
 
 async function getData(userId: string) {
   const data = await prisma.user.findUnique({
@@ -50,13 +56,13 @@ export default async function DashboardLayout({
   return (
     <>
       <div className="min-h-screen w-full grid md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
-        <div className="hidden md:block border-r bg-muted/40">
+        <div className="hidden md:block border-r">
           <div className="flex h-full max-h-screen flex-col gap-2">
-            <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
+            <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6 justify-center">
               <Link href="/" className="flex items-center gap-2">
-                <Image src={Logo} alt="logo" className="size-8" />
-                <p className="text-xl font-semibold">
-                  my<span className="text-brand">calendar</span>
+                <Image src={Logo} alt="logo" className="size-6" />
+                <p className={`text-xl font-semibold ${poppins.className}`}>
+                  mycalendar
                 </p>
               </Link>
             </div>
@@ -68,7 +74,7 @@ export default async function DashboardLayout({
           </div>
         </div>
         <div className="flex flex-col w-full">
-          <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px]">
+          <header className="flex h-14 items-center gap-4 border-b px-4 lg:h-[60px]">
             <Sheet>
               <SheetTrigger asChild>
                 <Button

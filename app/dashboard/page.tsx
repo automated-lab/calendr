@@ -151,7 +151,7 @@ export default async function DashboardPage() {
                     </dl>
                   </div>
                 </Link>
-                <div className="bg-muted/50 px-4 py-2 flex justify-between items-center">
+                <div className="bg-muted/5 px-4 py-2 flex justify-between items-center">
                   <CopyLinkButton
                     url={`${process.env.NEXT_PUBLIC_URL}/${data.username}/${item.url}`}
                   />
