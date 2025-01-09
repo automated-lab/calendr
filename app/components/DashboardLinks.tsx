@@ -25,7 +25,7 @@ interface iAppProps {
 export const dashboardLinks: iAppProps[] = [
   {
     id: 0,
-    name: "Event Types",
+    name: "Events",
     href: "/dashboard",
     icon: HomeIcon,
   },
@@ -57,7 +57,7 @@ export function DashboardLinks() {
         <Link
           className={cn(
             pathname === link.href
-              ? "text-primary bg-primary/10"
+              ? "text-muted-foreground bg-primary/10"
               : "text-muted-foreground hover:text-foreground",
             "flex items-center gap-6 rounded-md px-2 py-1.5 hover:bg-nav-bg transition-colors duration-200 ease-in-out mt-2"
           )}

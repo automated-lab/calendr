@@ -18,6 +18,8 @@ import {
 import { CopyLinkMenuItem } from "@/app/components/CopyLinkMenu";
 import { CopyLinkButton } from "@/app/components/CopyLinkButton";
 import { ShareDialog } from "@/app/components/ShareDialog";
+import Image from "next/image";
+import { VIDEO_CALL_ICONS, VideoCallProvider } from "../lib/constants";
 
 async function getData(userId: string) {
   const data = await prisma.user.findUnique({
@@ -133,25 +135,43 @@ export default async function DashboardPage() {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
-                <Link
-                  href={`/dashboard/${item.id}`}
-                  className="flex items-center justify-between p-4"
-                >
-                  <div className="flex-shrink-0">
-                    <Users2 className="size-6" />
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-muted-foreground">
-                        {item.duration} Minutes
-                      </dt>
-                      <dd className="text-lg font-medium text-muted-foreground">
-                        {item.title}
-                      </dd>
-                    </dl>
-                  </div>
-                </Link>
-                <div className="bg-muted/5 px-4 py-2 flex justify-between items-center">
+                <div className="flex flex-col p-4 gap-4">
+                  <Link
+                    href={`/${data.username}/${item.url}`}
+                    className="flex flex-col gap-4"
+                  >
+                    <div className="flex-shrink-0">
+                      {item.videoCallSoftware &&
+                      VIDEO_CALL_ICONS[
+                        item.videoCallSoftware as VideoCallProvider
+                      ] ? (
+                        <Image
+                          src={
+                            VIDEO_CALL_ICONS[
+                              item.videoCallSoftware as VideoCallProvider
+                            ]
+                          }
+                          alt={item.videoCallSoftware}
+                          width={24}
+                          height={24}
+                        />
+                      ) : (
+                        <Users2 className="size-6" />
+                      )}
+                    </div>
+                    <div className="w-full">
+                      <div>
+                        <div className="text-lg font-medium text-muted-foreground">
+                          {item.title}
+                        </div>
+                        <div className="text-sm font-medium text-muted-foreground/70">
+                          {item.duration} Minutes
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                </div>
+                <div className="bg-muted/50 px-4 py-2 flex justify-between items-center">
                   <CopyLinkButton
                     url={`${process.env.NEXT_PUBLIC_URL}/${data.username}/${item.url}`}
                   />
