@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { SubmitButton } from "@/app/components/SubmitButton";
 import { createMeetingAction } from "@/app/actions/actions";
-import { format } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 
 async function getData(userName: string, eventUrl: string) {
   const data = await prisma.eventType.findFirst({
@@ -89,10 +89,18 @@ export default async function EventTypePage({ params, searchParams }: Props) {
   const resolvedSearchParams = await searchParams;
   const { username, eventUrl } = resolvedParams;
 
-  // If no date is provided, redirect to today's date
+  // Get user's timezone first
+  const userData = await prisma.user.findUnique({
+    where: { username },
+    select: { timezone: true },
+  });
+  const userTimezone = userData?.timezone || "UTC";
+
+  // If no date is provided, redirect to today's date in user's timezone
   if (!resolvedSearchParams.date) {
-    const today = format(new Date(), "yyyy-MM-dd");
-    return redirect(`/${username}/${eventUrl}?date=${today}`);
+    const now = new Date();
+    const todayInUserTz = formatInTimeZone(now, userTimezone, "yyyy-MM-dd");
+    return redirect(`/${username}/${eventUrl}?date=${todayInUserTz}`);
   }
 
   const data = await getData(username, eventUrl);
