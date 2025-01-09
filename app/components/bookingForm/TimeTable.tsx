@@ -1,3 +1,4 @@
+// Server Component
 import prisma from "@/app/lib/db";
 import {
   addMinutes,
@@ -10,9 +11,8 @@ import {
 } from "date-fns";
 import { Prisma } from "@prisma/client";
 import { nylas } from "@/app/lib/nylas";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { formatInTimeZone } from "date-fns-tz";
+import ClientTimeTable from "./ClientTimeTable.client";
 
 interface FreeBusyTimeSlot {
   startTime: number;
@@ -116,7 +116,7 @@ interface iAppProps {
   duration: number;
 }
 
-function calculateAvailableTimeSlots(
+async function calculateAvailableTimeSlots(
   date: string,
   dbAvailability: {
     fromTime: string | undefined;
@@ -235,7 +235,7 @@ export async function TimeTable({
     toTime: data?.toTime?.toISOString(),
   };
 
-  const availableSlots = calculateAvailableTimeSlots(
+  const availableSlotsHostTz = await calculateAvailableTimeSlots(
     formattedDate,
     dbAvailability,
     nylasCalendarData,
@@ -244,30 +244,10 @@ export async function TimeTable({
   );
 
   return (
-    <div className="flex flex-col gap-y-2">
-      <p className="text-base font-semibold">
-        {format(selectedDate, "EEE")}{" "}
-        <span className="text-sm text-muted-foreground">
-          {format(selectedDate, "MMM d")}
-        </span>
-      </p>
-
-      <div className="mt-3 h-[350px] overflow-y-auto space-y-2 scrollbar-thin scrollbar-thumb-gray-200">
-        {availableSlots.length > 0 ? (
-          availableSlots.map((slot, index) => (
-            <Link
-              key={index}
-              href={`?date=${format(selectedDate, "yyyy-MM-dd")}&time=${slot}`}
-            >
-              <Button variant="outline" className="w-full mb-2">
-                {slot}
-              </Button>
-            </Link>
-          ))
-        ) : (
-          <p className="text-sm text-muted-foreground">No available slots</p>
-        )}
-      </div>
-    </div>
+    <ClientTimeTable
+      selectedDate={selectedDate}
+      availableSlotsHostTz={availableSlotsHostTz}
+      formattedDate={formattedDate}
+    />
   );
 }
