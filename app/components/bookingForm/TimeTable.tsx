@@ -23,7 +23,11 @@ interface NylasCalendarResponse {
 
 async function getData(selectedDate: Date, username: string) {
   const currentDay = format(selectedDate, "EEEE");
-  console.log("Environment:", process.env.NODE_ENV);
+  console.log("=== getData Debug ===");
+  console.log("Server location: Washington, D.C.");
+  console.log("Server time:", new Date().toISOString());
+  console.log("Selected date (raw):", selectedDate);
+  console.log("Selected date (ISO):", selectedDate.toISOString());
   console.log("Current day:", currentDay);
 
   const data = await prisma.availability.findFirst({
@@ -47,6 +51,34 @@ async function getData(selectedDate: Date, username: string) {
     },
   });
 
+  const timezone = data?.User?.timezone || "UTC";
+  console.log("User timezone:", timezone);
+  console.log(
+    "Selected date in user timezone:",
+    formatInTimeZone(selectedDate, timezone, "yyyy-MM-dd HH:mm:ssXXX")
+  );
+
+  // Create start/end of day in UTC for the SELECTED date
+  // Start from previous day to handle timezone differences
+  const startOfDay = new Date(selectedDate);
+  startOfDay.setUTCHours(0, 0, 0, 0);
+  startOfDay.setDate(startOfDay.getDate() - 1); // Start from previous day
+
+  const endOfDay = new Date(selectedDate);
+  endOfDay.setUTCHours(23, 59, 59, 999);
+  endOfDay.setDate(endOfDay.getDate() + 1); // End at next day
+
+  console.log("Fetch window start (UTC):", startOfDay.toISOString());
+  console.log(
+    "Fetch window start (User TZ):",
+    formatInTimeZone(startOfDay, timezone, "yyyy-MM-dd HH:mm:ssXXX")
+  );
+  console.log("Fetch window end (UTC):", endOfDay.toISOString());
+  console.log(
+    "Fetch window end (User TZ):",
+    formatInTimeZone(endOfDay, timezone, "yyyy-MM-dd HH:mm:ssXXX")
+  );
+
   console.log("DB Availability data:", JSON.stringify(data, null, 2));
 
   if (!data?.User?.grantId || !data?.User?.grantEmail) {
@@ -63,18 +95,6 @@ async function getData(selectedDate: Date, username: string) {
       },
     };
   }
-
-  const timezone = data.User.timezone || "UTC";
-
-  // Create start/end of day in UTC for the SELECTED date
-  // Start from previous day to handle timezone differences
-  const startOfDay = new Date(selectedDate);
-  startOfDay.setUTCHours(0, 0, 0, 0);
-  startOfDay.setDate(startOfDay.getDate() - 1); // Start from previous day
-
-  const endOfDay = new Date(selectedDate);
-  endOfDay.setUTCHours(23, 59, 59, 999);
-  endOfDay.setDate(endOfDay.getDate() + 1); // End at next day
 
   try {
     console.log(
@@ -132,11 +152,12 @@ async function calculateAvailableTimeSlots(
   timezone: string
 ) {
   console.log("\n=== Time Slot Calculation Debug ===");
+  console.log("Server time:", new Date().toISOString());
   console.log("Input date:", date);
-  console.log("Duration:", duration);
-  console.log("Timezone:", timezone);
-  console.log("DB Availability:", JSON.stringify(dbAvailability, null, 2));
-  console.log("Nylas Data:", JSON.stringify(nylasData, null, 2));
+  console.log(
+    "Input date in user timezone:",
+    formatInTimeZone(new Date(date), timezone, "yyyy-MM-dd HH:mm:ssXXX")
+  );
 
   const now = new Date();
   const selectedDate = new Date(date);
@@ -145,16 +166,28 @@ async function calculateAvailableTimeSlots(
     return [];
   }
 
-  // Get the hours and minutes in the local timezone for the selected date
-  const fromTime = new Date(dbAvailability.fromTime);
-  const toTime = new Date(dbAvailability.toTime);
+  // Convert the DB times to the user's timezone
+  const fromTimeLocal = formatInTimeZone(
+    new Date(dbAvailability.fromTime),
+    timezone,
+    "HH:mm:ss"
+  );
+  const toTimeLocal = formatInTimeZone(
+    new Date(dbAvailability.toTime),
+    timezone,
+    "HH:mm:ss"
+  );
 
-  // Create new dates for the selected date using the hours/minutes from the DB times
+  // Parse hours and minutes from the local time strings
+  const [fromHours, fromMinutes] = fromTimeLocal.split(":").map(Number);
+  const [toHours, toMinutes] = toTimeLocal.split(":").map(Number);
+
+  // Create new dates in the user's timezone
   const availableFromUtc = new Date(selectedDate);
-  availableFromUtc.setHours(fromTime.getHours(), fromTime.getMinutes(), 0, 0);
+  availableFromUtc.setHours(fromHours, fromMinutes, 0, 0);
 
   const availableToUtc = new Date(selectedDate);
-  availableToUtc.setHours(toTime.getHours(), toTime.getMinutes(), 0, 0);
+  availableToUtc.setHours(toHours, toMinutes, 0, 0);
 
   // Handle day wraparound - if end time is before start time, it means it's the next day
   if (availableToUtc < availableFromUtc) {
@@ -164,6 +197,8 @@ async function calculateAvailableTimeSlots(
   console.log("Selected date:", selectedDate.toISOString());
   console.log("DB from time:", dbAvailability.fromTime);
   console.log("DB to time:", dbAvailability.toTime);
+  console.log("Local from time:", fromTimeLocal);
+  console.log("Local to time:", toTimeLocal);
   console.log("Processing date:", date);
   console.log("Timezone being used:", timezone);
   console.log("Available from:", availableFromUtc.toISOString());
@@ -174,12 +209,13 @@ async function calculateAvailableTimeSlots(
     nylasData.data[0]?.timeSlots?.map((slot: FreeBusyTimeSlot) => {
       const startDate = new Date(slot.startTime * 1000);
       const endDate = new Date(slot.endTime * 1000);
-      console.log("\nBusy slot details:");
+      console.log("\n=== Busy Slot Analysis ===");
+      console.log(`Raw timestamps: ${slot.startTime} - ${slot.endTime}`);
       console.log(
-        `UTC:     ${startDate.toISOString()} to ${endDate.toISOString()}`
+        `UTC times: ${startDate.toISOString()} - ${endDate.toISOString()}`
       );
       console.log(
-        `Local:   ${formatInTimeZone(startDate, timezone, "yyyy-MM-dd HH:mm:ss")} to ${formatInTimeZone(endDate, timezone, "yyyy-MM-dd HH:mm:ss")} (${timezone})`
+        `User timezone (${timezone}): ${formatInTimeZone(startDate, timezone, "yyyy-MM-dd HH:mm:ssXXX")} - ${formatInTimeZone(endDate, timezone, "yyyy-MM-dd HH:mm:ssXXX")}`
       );
       return {
         start: slot.startTime,
@@ -199,18 +235,42 @@ async function calculateAvailableTimeSlots(
       const slotStart = Math.floor(currentSlot.getTime() / 1000);
       const slotEndTime = Math.floor(slotEnd.getTime() / 1000);
 
+      console.log("\n=== Checking Slot ===");
+      console.log(
+        `Slot UTC: ${currentSlot.toISOString()} - ${slotEnd.toISOString()}`
+      );
+      console.log(
+        `Slot Local: ${formatInTimeZone(currentSlot, timezone, "yyyy-MM-dd HH:mm:ssXXX")} - ${formatInTimeZone(slotEnd, timezone, "yyyy-MM-dd HH:mm:ssXXX")}`
+      );
+      console.log(`Slot timestamps: ${slotStart} - ${slotEndTime}`);
+
       const isAvailable = !busySlots.some((busy) => {
+        console.log(
+          `Comparing against busy period: ${busy.start} - ${busy.end}`
+        );
+        console.log(
+          `UTC: ${new Date(busy.start * 1000).toISOString()} - ${new Date(busy.end * 1000).toISOString()}`
+        );
+        console.log(
+          `Local: ${formatInTimeZone(new Date(busy.start * 1000), timezone, "yyyy-MM-dd HH:mm:ssXXX")} - ${formatInTimeZone(new Date(busy.end * 1000), timezone, "yyyy-MM-dd HH:mm:ssXXX")}`
+        );
+
         const hasOverlap = slotStart < busy.end && slotEndTime > busy.start;
+        console.log(
+          `Overlap check: ${slotStart} < ${busy.end} && ${slotEndTime} > ${busy.start} = ${hasOverlap}`
+        );
+
         if (hasOverlap) {
-          console.log(
-            `OVERLAP: ${currentSlot.toISOString()} - ${slotEnd.toISOString()} overlaps with busy ${new Date(busy.start * 1000).toISOString()} - ${new Date(busy.end * 1000).toISOString()}`
-          );
+          console.log("OVERLAP DETECTED!");
         }
         return hasOverlap;
       });
 
       if (isAvailable) {
+        console.log("Slot is AVAILABLE");
         allSlots.push(new Date(currentSlot));
+      } else {
+        console.log("Slot is BLOCKED");
       }
     }
     currentSlot = addMinutes(new Date(currentSlot), duration);
