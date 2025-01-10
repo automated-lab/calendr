@@ -12,6 +12,9 @@ import { SubmitButton } from "@/app/components/SubmitButton";
 import { createMeetingAction } from "@/app/actions/actions";
 import { formatInTimeZone } from "date-fns-tz";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 async function getData(userName: string, eventUrl: string) {
   const data = await prisma.eventType.findFirst({
     where: {
