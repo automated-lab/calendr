@@ -112,9 +112,12 @@ async function getData(selectedDate: Date, username: string) {
 
   // Create start/end of day in the user's timezone
   console.log("=== Server Timezone Debug ===");
-  console.log("Server TZ:", process.env.TZ);
+  console.log("Server TIMEZONE:", process.env.TIMEZONE);
   console.log("Server current time:", new Date().toString());
   console.log("Server timezone offset:", new Date().getTimezoneOffset());
+
+  // Force server timezone to match user's timezone
+  process.env.TZ = process.env.TIMEZONE || timezone;
 
   const startOfDay = toDate(
     parseISO(`${format(selectedDate, "yyyy-MM-dd")}T00:00:00`),
@@ -175,7 +178,8 @@ async function calculateAvailableTimeSlots(
   duration: number,
   timezone: string
 ) {
-  const now = new Date();
+  // Get current time in user's timezone
+  const now = toDate(new Date(), { timeZone: timezone });
 
   // Convert time strings to Date objects in the user's timezone
   const availableFrom = toDate(parseISO(`${date}T${dbAvailability.fromTime}`), {
