@@ -72,8 +72,8 @@ model Availability {
   id String @id @default(uuid())
 
   day      Day
-  fromTime String
-  toTime   String
+  fromTime String  @db.VarChar(5) // HH:mm format
+  toTime   String  @db.VarChar(5) // HH:mm format
   isActive Boolean @default(true)
 
   User   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
