@@ -1,13 +1,6 @@
 // Server Component
 import prisma from "@/app/lib/db";
-import {
-  addMinutes,
-  format,
-  fromUnixTime,
-  isAfter,
-  isBefore,
-  addDays,
-} from "date-fns";
+import { addMinutes, format, isAfter, isBefore, addDays } from "date-fns";
 import { Prisma } from "@prisma/client";
 import { nylas } from "@/app/lib/nylas";
 import { formatInTimeZone } from "date-fns-tz";
@@ -154,31 +147,30 @@ async function calculateAvailableTimeSlots(
     return [];
   }
 
-  // Get the timezone offset in minutes for the selected date
-  const tzOffset = selectedDate.getTimezoneOffset();
-
   // Use the UTC times directly from DB but adjust to selected date
   const fromTime = new Date(dbAvailability.fromTime);
   const toTime = new Date(dbAvailability.toTime);
 
-  // Create date objects for the selected date's availability window, adjusting for timezone
+  // Create date objects for the selected date's availability window
   const availableFromUtc = new Date(
-    selectedDate.getFullYear(),
-    selectedDate.getMonth(),
-    selectedDate.getDate(),
-    fromTime.getUTCHours(),
-    fromTime.getUTCMinutes()
+    Date.UTC(
+      selectedDate.getFullYear(),
+      selectedDate.getMonth(),
+      selectedDate.getDate(),
+      fromTime.getUTCHours(),
+      fromTime.getUTCMinutes()
+    )
   );
-  availableFromUtc.setMinutes(availableFromUtc.getMinutes() - tzOffset);
 
   let availableToUtc = new Date(
-    selectedDate.getFullYear(),
-    selectedDate.getMonth(),
-    selectedDate.getDate(),
-    toTime.getUTCHours(),
-    toTime.getUTCMinutes()
+    Date.UTC(
+      selectedDate.getFullYear(),
+      selectedDate.getMonth(),
+      selectedDate.getDate(),
+      toTime.getUTCHours(),
+      toTime.getUTCMinutes()
+    )
   );
-  availableToUtc.setMinutes(availableToUtc.getMinutes() - tzOffset);
 
   // Handle day wraparound if needed
   if (availableToUtc < availableFromUtc) {
@@ -186,19 +178,14 @@ async function calculateAvailableTimeSlots(
   }
 
   console.log("Processing date:", date);
-  console.log("Timezone offset (minutes):", tzOffset);
   console.log("Available from (UTC):", availableFromUtc.toISOString());
   console.log("Available to (UTC):", availableToUtc.toISOString());
 
-  // Convert Nylas timestamps to UTC Date objects
+  // Store busy slots as epoch timestamps for direct comparison
   const busySlots =
     nylasData.data[0]?.timeSlots?.map((slot: FreeBusyTimeSlot) => {
-      const start = fromUnixTime(slot.startTime);
-      const end = fromUnixTime(slot.endTime);
-      console.log(
-        `Busy slot (UTC): ${start.toISOString()} - ${end.toISOString()}`
-      );
-      return { start, end };
+      console.log(`Busy slot: ${slot.startTime} - ${slot.endTime}`);
+      return { start: slot.startTime, end: slot.endTime };
     }) || [];
 
   // Generate slots in UTC
@@ -218,19 +205,23 @@ async function calculateAvailableTimeSlots(
       return false;
     }
 
-    // Check for overlap with busy slots (all in UTC)
+    // Convert slot times to epochs for direct comparison
+    const slotEpoch = Math.floor(slot.getTime() / 1000);
+    const slotEndEpoch = Math.floor(slotEnd.getTime() / 1000);
+
+    // Check for overlap with busy slots using epochs
     const isOverlapping = busySlots.some((busy) => {
       const hasOverlap =
-        (isAfter(slot, busy.start) && isBefore(slot, busy.end)) || // Slot starts during busy period
-        (isAfter(slotEnd, busy.start) && isBefore(slotEnd, busy.end)) || // Slot ends during busy period
-        (isBefore(slot, busy.start) && isAfter(slotEnd, busy.end)) || // Slot contains busy period
-        (isBefore(busy.start, slot) && isAfter(busy.end, slotEnd)) || // Busy period contains slot
-        slot.getTime() === busy.start.getTime() || // Exact start match
-        slotEnd.getTime() === busy.end.getTime(); // Exact end match
+        (slotEpoch > busy.start && slotEpoch < busy.end) || // Slot starts during busy period
+        (slotEndEpoch > busy.start && slotEndEpoch < busy.end) || // Slot ends during busy period
+        (slotEpoch <= busy.start && slotEndEpoch >= busy.end) || // Slot contains busy period
+        (busy.start <= slotEpoch && busy.end >= slotEndEpoch) || // Busy period contains slot
+        slotEpoch === busy.start || // Exact start match
+        slotEndEpoch === busy.end; // Exact end match
 
       if (hasOverlap) {
         console.log(
-          `Slot ${slot.toISOString()} overlaps with busy period ${busy.start.toISOString()} - ${busy.end.toISOString()}`
+          `Slot ${slotEpoch} - ${slotEndEpoch} overlaps with busy period ${busy.start} - ${busy.end}`
         );
       }
 
