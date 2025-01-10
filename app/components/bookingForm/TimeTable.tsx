@@ -149,20 +149,25 @@ async function calculateAvailableTimeSlots(
   const fromTime = new Date(dbAvailability.fromTime);
   const toTime = new Date(dbAvailability.toTime);
 
+  // Create UTC date objects for the selected date's availability window
   const availableFromUtc = new Date(
-    selectedDate.getFullYear(),
-    selectedDate.getMonth(),
-    selectedDate.getDate(),
-    fromTime.getUTCHours(),
-    fromTime.getUTCMinutes()
+    Date.UTC(
+      selectedDate.getFullYear(),
+      selectedDate.getMonth(),
+      selectedDate.getDate(),
+      fromTime.getUTCHours(),
+      fromTime.getUTCMinutes()
+    )
   );
 
   let availableToUtc = new Date(
-    selectedDate.getFullYear(),
-    selectedDate.getMonth(),
-    selectedDate.getDate(),
-    toTime.getUTCHours(),
-    toTime.getUTCMinutes()
+    Date.UTC(
+      selectedDate.getFullYear(),
+      selectedDate.getMonth(),
+      selectedDate.getDate(),
+      toTime.getUTCHours(),
+      toTime.getUTCMinutes()
+    )
   );
 
   // Handle day wraparound if needed
@@ -174,7 +179,7 @@ async function calculateAvailableTimeSlots(
   console.log("Available from (UTC):", availableFromUtc.toISOString());
   console.log("Available to (UTC):", availableToUtc.toISOString());
 
-  // Use Nylas busy slots directly (they're already in UTC)
+  // Convert Nylas timestamps to UTC Date objects
   const busySlots =
     nylasData.data[0]?.timeSlots?.map((slot: FreeBusyTimeSlot) => {
       const start = fromUnixTime(slot.startTime);
@@ -189,12 +194,12 @@ async function calculateAvailableTimeSlots(
   const allSlots = [];
   let currentSlot = availableFromUtc;
   while (isBefore(currentSlot, availableToUtc)) {
-    allSlots.push(currentSlot);
-    currentSlot = addMinutes(currentSlot, duration);
+    allSlots.push(new Date(currentSlot));
+    currentSlot = addMinutes(new Date(currentSlot), duration);
   }
 
   const freeSlots = allSlots.filter((slot) => {
-    const slotEnd = addMinutes(slot, duration);
+    const slotEnd = addMinutes(new Date(slot), duration);
 
     // Compare with now in UTC
     if (!isAfter(slot, now)) {
@@ -203,13 +208,14 @@ async function calculateAvailableTimeSlots(
     }
 
     // Check for overlap with busy slots (all in UTC)
-    const isOverlapping = busySlots.some((busy: { start: Date; end: Date }) => {
+    const isOverlapping = busySlots.some((busy) => {
       const hasOverlap =
         (isAfter(slot, busy.start) && isBefore(slot, busy.end)) || // Slot starts during busy period
         (isAfter(slotEnd, busy.start) && isBefore(slotEnd, busy.end)) || // Slot ends during busy period
         (isBefore(slot, busy.start) && isAfter(slotEnd, busy.end)) || // Slot contains busy period
-        slot.getTime() === busy.start.getTime() || // Slot starts exactly at busy start
-        slotEnd.getTime() === busy.end.getTime(); // Slot ends exactly at busy end
+        (isBefore(busy.start, slot) && isAfter(busy.end, slotEnd)) || // Busy period contains slot
+        slot.getTime() === busy.start.getTime() || // Exact start match
+        slotEnd.getTime() === busy.end.getTime(); // Exact end match
 
       if (hasOverlap) {
         console.log(
