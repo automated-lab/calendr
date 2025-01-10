@@ -13,6 +13,9 @@ import { nylas } from "@/app/lib/nylas";
 import { formatInTimeZone } from "date-fns-tz";
 import ClientTimeTable from "./ClientTimeTable.client";
 
+// Set timezone for server-side operations
+process.env.TZ = process.env.TIMEZONE || "UTC";
+
 interface FreeBusyTimeSlot {
   startTime: number;
   endTime: number;
