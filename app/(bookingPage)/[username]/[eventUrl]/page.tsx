@@ -69,20 +69,6 @@ async function getData(userName: string, eventUrl: string) {
   return data;
 }
 
-function getOrdinalSuffix(day: number) {
-  if (day > 3 && day < 21) return "th";
-  switch (day % 10) {
-    case 1:
-      return "st";
-    case 2:
-      return "nd";
-    case 3:
-      return "rd";
-    default:
-      return "th";
-  }
-}
-
 interface Props {
   params: Promise<{ username: string; eventUrl: string }>;
   searchParams: Promise<{ date?: string; time?: string }>;
@@ -109,15 +95,14 @@ export default async function EventTypePage({ params, searchParams }: Props) {
 
   const data = await getData(username, eventUrl);
   const selectedDate = resolvedSearchParams.date
-    ? new Date(resolvedSearchParams.date)
+    ? new Date(`${resolvedSearchParams.date}T00:00:00`)
     : new Date();
 
-  const day = selectedDate.getDate();
-  const formattedDate = `${new Intl.DateTimeFormat("en-US", {
-    weekday: "long",
-  }).format(selectedDate)}, ${new Intl.DateTimeFormat("en-US", {
-    month: "long",
-  }).format(selectedDate)} ${day}${getOrdinalSuffix(day)}`;
+  const formattedDate = formatInTimeZone(
+    selectedDate,
+    userTimezone,
+    "EEEE, MMMM do"
+  );
 
   const showForm = !!resolvedSearchParams.date && !!resolvedSearchParams.time;
 
