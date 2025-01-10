@@ -1,6 +1,13 @@
 // Server Component
 import prisma from "@/app/lib/db";
-import { addMinutes, format, isBefore } from "date-fns";
+import {
+  addMinutes,
+  format,
+  isBefore,
+  isAfter,
+  parse,
+  fromUnixTime,
+} from "date-fns";
 import { Prisma } from "@prisma/client";
 import { nylas } from "@/app/lib/nylas";
 import { formatInTimeZone } from "date-fns-tz";
@@ -151,146 +158,60 @@ async function calculateAvailableTimeSlots(
   duration: number,
   timezone: string
 ) {
-  console.log("\n=== Time Slot Calculation Debug ===");
-  console.log("Server time:", new Date().toISOString());
-  console.log("Input date:", date);
-
   const now = new Date();
-  const selectedDate = new Date(date);
 
-  if (!dbAvailability.fromTime || !dbAvailability.toTime) {
-    return [];
-  }
-
-  // Parse the DB times
-  const fromTime = new Date(dbAvailability.fromTime);
-  const toTime = new Date(dbAvailability.toTime);
-
-  // Create the availability window using the DB times
-  const availableFromUtc = new Date(selectedDate);
-  availableFromUtc.setUTCHours(
-    fromTime.getUTCHours(),
-    fromTime.getUTCMinutes(),
-    0,
-    0
+  // Convert DB availability to Date objects in the user's timezone
+  const availableFrom = parse(
+    `${date} ${format(new Date(dbAvailability.fromTime!), "HH:mm")}`,
+    "yyyy-MM-dd HH:mm",
+    new Date()
   );
 
-  const availableToUtc = new Date(selectedDate);
-  availableToUtc.setUTCHours(
-    toTime.getUTCHours(),
-    toTime.getUTCMinutes(),
-    0,
-    0
+  const availableTo = parse(
+    `${date} ${format(new Date(dbAvailability.toTime!), "HH:mm")}`,
+    "yyyy-MM-dd HH:mm",
+    new Date()
   );
 
   // Handle day wraparound
-  if (toTime.getUTCHours() < fromTime.getUTCHours()) {
-    availableToUtc.setDate(availableToUtc.getDate() + 1);
+  if (availableTo < availableFrom) {
+    availableTo.setDate(availableTo.getDate() + 1);
   }
 
-  console.log("Selected date:", selectedDate.toISOString());
-  console.log("Processing date:", date);
-  console.log("Timezone being used:", timezone);
-  console.log("DB from time:", dbAvailability.fromTime);
-  console.log("DB to time:", dbAvailability.toTime);
-  console.log("Available from (UTC):", availableFromUtc.toISOString());
-  console.log(
-    "Available from (Local):",
-    formatInTimeZone(availableFromUtc, timezone, "yyyy-MM-dd HH:mm:ssXXX")
-  );
-  console.log("Available to (UTC):", availableToUtc.toISOString());
-  console.log(
-    "Available to (Local):",
-    formatInTimeZone(availableToUtc, timezone, "yyyy-MM-dd HH:mm:ssXXX")
-  );
-
-  // Get all busy slots
+  // Extract busy slots from Nylas data
   const busySlots =
-    nylasData.data[0]?.timeSlots?.map((slot: FreeBusyTimeSlot) => {
-      const startDate = new Date(slot.startTime * 1000);
-      const endDate = new Date(slot.endTime * 1000);
-      console.log("\n=== Busy Slot Analysis ===");
-      console.log(`Raw timestamps: ${slot.startTime} - ${slot.endTime}`);
-      console.log(
-        `UTC times: ${startDate.toISOString()} - ${endDate.toISOString()}`
-      );
-      console.log(
-        `User timezone (${timezone}): ${formatInTimeZone(startDate, timezone, "yyyy-MM-dd HH:mm:ssXXX")} - ${formatInTimeZone(endDate, timezone, "yyyy-MM-dd HH:mm:ssXXX")}`
-      );
-      return {
-        start: slot.startTime,
-        end: slot.endTime,
-      };
-    }) || [];
+    nylasData.data[0]?.timeSlots?.map((slot) => ({
+      start: fromUnixTime(slot.startTime),
+      end: fromUnixTime(slot.endTime),
+    })) || [];
 
-  // Generate available slots
+  // Generate all possible slots within the available time
   const allSlots = [];
-  let currentSlot = availableFromUtc;
+  let currentSlot = availableFrom;
 
-  while (isBefore(currentSlot, availableToUtc)) {
+  while (isBefore(currentSlot, availableTo)) {
+    // Skip slots in the past
     if (isBefore(currentSlot, now)) {
-      console.log(`Slot ${currentSlot.toISOString()} is in the past`);
-    } else {
-      const slotEnd = addMinutes(currentSlot, duration);
-      const slotStart = Math.floor(currentSlot.getTime() / 1000);
-      const slotEndTime = Math.floor(slotEnd.getTime() / 1000);
-
-      console.log("\n=== Checking Slot ===");
-      console.log(
-        `Slot UTC: ${currentSlot.toISOString()} - ${slotEnd.toISOString()}`
-      );
-      console.log(
-        `Slot Local: ${formatInTimeZone(currentSlot, timezone, "yyyy-MM-dd HH:mm:ssXXX")} - ${formatInTimeZone(slotEnd, timezone, "yyyy-MM-dd HH:mm:ssXXX")}`
-      );
-
-      // Check if this slot is within any busy period
-      const isAvailable = !busySlots.some((busy) => {
-        // Convert all times to the user's timezone for comparison
-        const slotStartLocal = formatInTimeZone(
-          currentSlot,
-          timezone,
-          "yyyy-MM-dd"
-        );
-        const busyStartLocal = formatInTimeZone(
-          new Date(busy.start * 1000),
-          timezone,
-          "yyyy-MM-dd"
-        );
-        const busyEndLocal = formatInTimeZone(
-          new Date(busy.end * 1000),
-          timezone,
-          "yyyy-MM-dd"
-        );
-
-        // If the busy period is on this day in local timezone
-        if (
-          slotStartLocal === busyStartLocal ||
-          slotStartLocal === busyEndLocal
-        ) {
-          const hasOverlap = slotStart < busy.end && slotEndTime > busy.start;
-
-          console.log(`Checking against busy period in ${timezone}:`);
-          console.log(
-            `Slot: ${formatInTimeZone(currentSlot, timezone, "HH:mm")} - ${formatInTimeZone(slotEnd, timezone, "HH:mm")}`
-          );
-          console.log(
-            `Busy: ${formatInTimeZone(new Date(busy.start * 1000), timezone, "HH:mm")} - ${formatInTimeZone(new Date(busy.end * 1000), timezone, "HH:mm")}`
-          );
-          console.log(`Overlap: ${hasOverlap}`);
-
-          return hasOverlap;
-        }
-        return false;
-      });
-
-      if (isAvailable) {
-        console.log("Slot is AVAILABLE");
-        allSlots.push(new Date(currentSlot));
-      } else {
-        console.log("Slot is BLOCKED");
-      }
+      currentSlot = addMinutes(currentSlot, duration);
+      continue;
     }
-    currentSlot = addMinutes(new Date(currentSlot), duration);
+
+    const slotEnd = addMinutes(currentSlot, duration);
+
+    // Check if slot overlaps with any busy period
+    const isAvailable = !busySlots.some(
+      (busy) =>
+        (!isBefore(currentSlot, busy.start) &&
+          isBefore(currentSlot, busy.end)) || // Slot starts during busy period
+        (isAfter(slotEnd, busy.start) && !isAfter(slotEnd, busy.end)) || // Slot ends during busy period
+        (isBefore(currentSlot, busy.start) && isAfter(slotEnd, busy.end)) // Slot completely contains busy period
+    );
+
+    if (isAvailable) {
+      allSlots.push(new Date(currentSlot));
+    }
+
+    currentSlot = addMinutes(currentSlot, duration);
   }
 
   return allSlots.map((slot) => formatInTimeZone(slot, timezone, "HH:mm"));
