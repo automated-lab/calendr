@@ -16,6 +16,7 @@ async function getData(id: string) {
       email: true,
       timezone: true,
       username: true,
+      image: true,
     },
   });
 
@@ -43,7 +44,7 @@ export default async function SettingsRoute() {
       <SettingsForm
         fullName={data.name || ""}
         email={data.email}
-        profileImage=""
+        profileImage={data.image as string}
         timezone={data.timezone}
       />
 

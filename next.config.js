@@ -14,6 +14,14 @@ const nextConfig = {
         protocol: "https",
         hostname: "yffatokjlo.ufs.sh",
       },
+      {
+        protocol: "https",
+        hostname: "uploadthing.com",
+      },
+      {
+        protocol: "https",
+        hostname: "files.uploadthing.com",
+      },
     ],
     domains: ["utfs.io"],
   },
