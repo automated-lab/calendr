@@ -10,6 +10,7 @@ import {
   today,
   parseDate,
 } from "@internationalized/date";
+import { format } from "date-fns";
 
 interface iAppProps {
   availability: {
@@ -43,23 +44,17 @@ export function RenderCalendar({ availability }: iAppProps) {
   };
 
   const isDateUnavailable = (date: DateValue) => {
-    const dayOfWeek = date.toDate(getLocalTimeZone()).getDay();
-    // Convert 0-6 (Sun-Sat) to Monday-Sunday format
-    const adjustedIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    const jsDate = date.toDate(getLocalTimeZone());
+    const dayName = format(jsDate, "EEEE").toUpperCase();
 
-    // Log the availability check
-    console.log("Current availability:", availability);
-    console.log("Checking day index:", adjustedIndex);
-
-    // Make sure we have availability data and it's properly ordered
+    // Make sure we have availability data
     if (!availability || availability.length !== 7) {
       console.error("Invalid availability data:", availability);
-      return true; // Mark as unavailable if data is invalid
+      return true;
     }
 
-    const dayAvailability = availability[adjustedIndex];
-    console.log(
-      `Checking availability for day ${adjustedIndex} (${dayAvailability?.day}): ${dayAvailability?.isActive}`
+    const dayAvailability = availability.find(
+      (d) => d.day.toUpperCase() === dayName
     );
     return !dayAvailability?.isActive;
   };
