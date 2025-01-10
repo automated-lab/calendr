@@ -111,10 +111,18 @@ async function getData(selectedDate: Date, username: string) {
   }
 
   // Create start/end of day in the user's timezone
+  console.log("=== Server Timezone Debug ===");
+  console.log("Server TZ:", process.env.TZ);
+  console.log("Server current time:", new Date().toString());
+  console.log("Server timezone offset:", new Date().getTimezoneOffset());
+
   const startOfDay = toDate(
     parseISO(`${format(selectedDate, "yyyy-MM-dd")}T00:00:00`),
     { timeZone: timezone }
   );
+  console.log("Start of day (user TZ):", startOfDay.toString());
+  console.log("Start of day unix:", Math.floor(startOfDay.getTime() / 1000));
+
   const endOfDay = toDate(
     parseISO(`${format(selectedDate, "yyyy-MM-dd")}T23:59:59`),
     { timeZone: timezone }
