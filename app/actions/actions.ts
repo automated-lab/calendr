@@ -428,3 +428,47 @@ export async function deleteEventTypeAction(formData: FormData) {
 
   return redirect("/dashboard");
 }
+
+interface AvailabilityUpdate {
+  id: string;
+  isActive: boolean;
+  fromTime: string;
+  toTime: string;
+}
+
+export async function updateBulkAvailabilityAction(formData: FormData) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const userId = session.user.id; // Safe to access after check
+  const updates = JSON.parse(
+    formData.get("updates") as string
+  ) as AvailabilityUpdate[];
+
+  try {
+    await prisma.$transaction(
+      updates.map((update) =>
+        prisma.availability.update({
+          where: {
+            id: update.id,
+            userId,
+          },
+          data: {
+            isActive: update.isActive,
+            fromTime: update.fromTime,
+            toTime: update.toTime,
+          },
+        })
+      )
+    );
+
+    revalidatePath("/dashboard/availability");
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error("Update error:", error.message);
+    } else {
+      console.error("Unexpected error:", error);
+    }
+    throw new Error("Failed to update availability");
+  }
+}

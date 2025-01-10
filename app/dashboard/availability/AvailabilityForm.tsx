@@ -19,7 +19,10 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { times } from "@/app/lib/times";
-import { updateAvailabilityAction } from "@/app/actions/actions";
+import { updateBulkAvailabilityAction } from "@/app/actions/actions";
+import { Button } from "@/components/ui/button";
+import { Copy } from "lucide-react";
+import { toast } from "sonner";
 
 interface Availability {
   id: string;
@@ -50,54 +53,60 @@ export default function AvailabilityForm({ initialData, userTimezone }: Props) {
   );
 
   const [availabilities, setAvailabilities] = useState(sortedInitialData);
+  const [hasChanges, setHasChanges] = useState(false);
 
   const formatTime = (timeString: string) => {
     return timeString; // Time strings are already in HH:mm format
   };
 
-  const handleSwitchChange = async (id: string, checked: boolean) => {
-    const updates = {
-      id,
-      isActive: checked,
-      fromTime: availabilities.find((a) => a.id === id)?.fromTime,
-      toTime: availabilities.find((a) => a.id === id)?.toTime,
-    };
-
-    const formData = new FormData();
-    formData.append("updates", JSON.stringify(updates));
-
-    await updateAvailabilityAction(formData);
-
+  const handleSwitchChange = (id: string, checked: boolean) => {
     setAvailabilities((prev) =>
       [...prev]
         .map((item) => (item.id === id ? { ...item, isActive: checked } : item))
         .sort((a, b) => dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day))
     );
+    setHasChanges(true);
   };
 
-  const handleTimeChange = async (
+  const handleTimeChange = (
     id: string,
     type: "fromTime" | "toTime",
     value: string
   ) => {
-    const availability = availabilities.find((a) => a.id === id);
-    if (!availability) return;
-
-    const updates = {
-      id,
-      isActive: availability.isActive,
-      fromTime: type === "fromTime" ? value : availability.fromTime,
-      toTime: type === "toTime" ? value : availability.toTime,
-    };
-
-    const formData = new FormData();
-    formData.append("updates", JSON.stringify(updates));
-
-    await updateAvailabilityAction(formData);
-
     setAvailabilities((prev) =>
       prev.map((item) => (item.id === id ? { ...item, [type]: value } : item))
     );
+    setHasChanges(true);
+  };
+
+  const handleCopyTimes = (fromTime: string, toTime: string) => {
+    setAvailabilities((prev) =>
+      prev.map((item) => ({
+        ...item,
+        fromTime,
+        toTime,
+      }))
+    );
+    setHasChanges(true);
+    toast.success("Times copied to all days");
+  };
+
+  const handleSaveChanges = async () => {
+    try {
+      // Disable further saves while processing
+      setHasChanges(false);
+
+      const formData = new FormData();
+      formData.append("updates", JSON.stringify(availabilities));
+
+      await updateBulkAvailabilityAction(formData);
+      toast.success("Changes saved successfully");
+    } catch (error) {
+      console.error("Error saving changes:", error);
+      toast.error("Failed to save changes");
+      // Re-enable save button on error
+      setHasChanges(true);
+    }
   };
 
   return (
@@ -116,7 +125,7 @@ export default function AvailabilityForm({ initialData, userTimezone }: Props) {
           return (
             <div
               key={item.id}
-              className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 items-center gap-4"
+              className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-[1fr_2fr_2fr_auto] items-center gap-4"
             >
               <div className="flex items-center gap-x-3">
                 <Switch
@@ -165,14 +174,26 @@ export default function AvailabilityForm({ initialData, userTimezone }: Props) {
                   </SelectGroup>
                 </SelectContent>
               </Select>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => handleCopyTimes(fromTime, toTime)}
+                title="Copy these times to all days"
+                className="w-10 h-10"
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
             </div>
           );
         })}
       </CardContent>
-      <CardFooter className="flex justify-end">
+      <CardFooter className="flex justify-between">
         <p className="text-sm text-muted-foreground">
-          Changes are saved automatically
+          {hasChanges ? "You have unsaved changes" : "All changes saved"}
         </p>
+        <Button onClick={handleSaveChanges} disabled={!hasChanges}>
+          Save Changes
+        </Button>
       </CardFooter>
     </Card>
   );
