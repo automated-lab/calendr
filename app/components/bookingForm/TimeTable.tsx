@@ -6,7 +6,6 @@ import {
   fromUnixTime,
   isAfter,
   isBefore,
-  parse,
   addDays,
 } from "date-fns";
 import { Prisma } from "@prisma/client";
@@ -32,7 +31,6 @@ interface NylasCalendarResponse {
 async function getData(selectedDate: Date, username: string) {
   const currentDay = format(selectedDate, "EEEE");
 
-  // Create start/end of day in user's timezone
   const data = await prisma.availability.findFirst({
     where: {
       day: currentDay as Prisma.EnumDayFilter,
@@ -71,30 +69,41 @@ async function getData(selectedDate: Date, username: string) {
 
   const timezone = data.User.timezone || "UTC";
 
-  // Create start/end of day in user's timezone
-  const startOfDayLocal = parse(
-    format(selectedDate, "yyyy-MM-dd") + " 00:00",
-    "yyyy-MM-dd HH:mm",
-    new Date()
+  // Create start/end of day in UTC
+  const startOfDay = new Date(
+    Date.UTC(
+      selectedDate.getFullYear(),
+      selectedDate.getMonth(),
+      selectedDate.getDate(),
+      0,
+      0,
+      0
+    )
   );
-  const endOfDayLocal = parse(
-    format(selectedDate, "yyyy-MM-dd") + " 23:59",
-    "yyyy-MM-dd HH:mm",
-    new Date()
+
+  const endOfDay = new Date(
+    Date.UTC(
+      selectedDate.getFullYear(),
+      selectedDate.getMonth(),
+      selectedDate.getDate(),
+      23,
+      59,
+      59
+    )
   );
 
   try {
     console.log(
       `Fetching busy times for ${format(selectedDate, "yyyy-MM-dd")} in ${timezone}`
     );
-    console.log(`Start time: ${format(startOfDayLocal, "yyyy-MM-dd HH:mm")}`);
-    console.log(`End time: ${format(endOfDayLocal, "yyyy-MM-dd HH:mm")}`);
+    console.log(`Start time (UTC): ${startOfDay.toISOString()}`);
+    console.log(`End time (UTC): ${endOfDay.toISOString()}`);
 
     const nylasCalendarData = await nylas.calendars.getFreeBusy({
       identifier: data.User.grantId,
       requestBody: {
-        startTime: Math.floor(startOfDayLocal.getTime() / 1000),
-        endTime: Math.floor(endOfDayLocal.getTime() / 1000),
+        startTime: Math.floor(startOfDay.getTime() / 1000),
+        endTime: Math.floor(endOfDay.getTime() / 1000),
         emails: [data.User.grantEmail],
       },
     });
