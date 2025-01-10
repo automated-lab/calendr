@@ -149,11 +149,17 @@ async function calculateAvailableTimeSlots(
     "yyyy-MM-dd HH:mm",
     new Date()
   );
+  availableFrom.setHours(
+    availableFrom.getHours() - availableFrom.getTimezoneOffset() / 60
+  );
 
   const availableTo = parse(
     `${date} ${dbAvailability.toTime}`,
     "yyyy-MM-dd HH:mm",
     new Date()
+  );
+  availableTo.setHours(
+    availableTo.getHours() - availableTo.getTimezoneOffset() / 60
   );
 
   // Extract busy slots from Nylas data
