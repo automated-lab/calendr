@@ -3,16 +3,20 @@ const nextConfig = {
   images: {
     remotePatterns: [
       {
-        protocol: 'https',
-        hostname: 'lh3.googleusercontent.com',
+        protocol: "https",
+        hostname: "lh3.googleusercontent.com",
       },
       {
-        protocol: 'https',
-        hostname: 'avatars.githubusercontent.com',  // Also add GitHub for GitHub auth
-      }
+        protocol: "https",
+        hostname: "avatars.githubusercontent.com",
+      },
+      {
+        protocol: "https",
+        hostname: "yffatokjlo.ufs.sh",
+      },
     ],
-    domains: ['utfs.io'],
+    domains: ["utfs.io"],
   },
-}
+};
 
-module.exports = nextConfig 
+module.exports = nextConfig;

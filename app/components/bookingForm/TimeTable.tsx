@@ -40,8 +40,14 @@ interface AvailabilityData {
 }
 
 async function getData(selectedDate: Date, username: string) {
+  const currentDay = format(selectedDate, "EEEE");
+  console.log("=== getData Debug ===");
+  console.log("Selected date:", selectedDate);
+  console.log("Current day:", currentDay);
+
   const data = (await prisma.availability.findFirst({
     where: {
+      day: currentDay as Prisma.EnumDayFilter,
       User: {
         username: username,
       },
@@ -61,53 +67,16 @@ async function getData(selectedDate: Date, username: string) {
   })) as AvailabilityData | null;
 
   const timezone = data?.User?.timezone || "UTC";
-  const currentDay = formatInTimeZone(selectedDate, timezone, "EEEE");
-
-  console.log("=== getData Debug ===");
-  console.log("Selected date:", selectedDate);
-  console.log("Current day:", currentDay);
   console.log("User timezone:", timezone);
+  console.log("DB Availability data:", JSON.stringify(data, null, 2));
 
-  // Now query with the correct day
-  const availabilityData = await prisma.availability.findFirst({
-    where: {
-      day: currentDay as Prisma.EnumDayFilter,
-      User: {
-        username: username,
-      },
-    },
-    select: {
-      fromTime: true,
-      toTime: true,
-      id: true,
-      User: {
-        select: {
-          grantEmail: true,
-          grantId: true,
-          timezone: true,
-        },
-      },
-    },
-  });
-
-  // Create start/end of day in the user's timezone
-  const startOfDay = new Date(selectedDate);
-  startOfDay.setHours(0, 0, 0, 0);
-  const endOfDay = new Date(selectedDate);
-  endOfDay.setHours(23, 59, 59, 999);
-
-  console.log(
-    "DB Availability data:",
-    JSON.stringify(availabilityData, null, 2)
-  );
-
-  if (!availabilityData?.User?.grantId || !availabilityData?.User?.grantEmail) {
+  if (!data?.User?.grantId || !data?.User?.grantEmail) {
     return {
-      data: availabilityData,
+      data,
       nylasCalendarData: {
         data: [
           {
-            email: availabilityData?.User?.grantEmail || "",
+            email: data?.User?.grantEmail || "",
             timeSlots: [],
             object: "free_busy",
           },
@@ -116,28 +85,37 @@ async function getData(selectedDate: Date, username: string) {
     };
   }
 
+  // Create start/end of day in the user's timezone
+  const startOfDay = parse(
+    format(selectedDate, "yyyy-MM-dd"),
+    "yyyy-MM-dd",
+    new Date()
+  );
+  const endOfDay = new Date(startOfDay);
+  endOfDay.setHours(23, 59, 59, 999);
+
   try {
     const nylasCalendarData = await nylas.calendars.getFreeBusy({
-      identifier: availabilityData.User.grantId,
+      identifier: data.User.grantId,
       requestBody: {
         startTime: Math.floor(startOfDay.getTime() / 1000),
         endTime: Math.floor(endOfDay.getTime() / 1000),
-        emails: [availabilityData.User.grantEmail],
+        emails: [data.User.grantEmail],
       },
     });
 
     return {
-      data: availabilityData,
+      data,
       nylasCalendarData: nylasCalendarData as NylasCalendarResponse,
     };
   } catch (error) {
     console.error("Nylas API Error:", error);
     return {
-      data: availabilityData,
+      data,
       nylasCalendarData: {
         data: [
           {
-            email: availabilityData.User.grantEmail,
+            email: data.User.grantEmail,
             timeSlots: [],
             object: "free_busy",
           },
@@ -160,11 +138,12 @@ async function calculateAvailableTimeSlots(
     toTime: string | undefined;
   },
   nylasData: NylasCalendarResponse,
-  duration: number
+  duration: number,
+  timezone: string
 ) {
   const now = new Date();
 
-  // Convert time strings to Date objects for comparison
+  // Convert time strings to Date objects for comparison in user's timezone
   const availableFrom = parse(
     `${date} ${dbAvailability.fromTime}`,
     "yyyy-MM-dd HH:mm",
@@ -207,7 +186,7 @@ async function calculateAvailableTimeSlots(
     );
 
     if (isAvailable) {
-      allSlots.push(format(currentSlot, "HH:mm"));
+      allSlots.push(formatInTimeZone(currentSlot, timezone, "HH:mm"));
     }
 
     currentSlot = addMinutes(currentSlot, duration);
@@ -222,6 +201,7 @@ export async function TimeTable({
   duration,
 }: iAppProps) {
   const { data, nylasCalendarData } = await getData(selectedDate, userName);
+  const timezone = data?.User?.timezone || "UTC";
 
   const formattedDate = format(selectedDate, "yyyy-MM-dd");
   const dbAvailability: {
@@ -236,7 +216,8 @@ export async function TimeTable({
     formattedDate,
     dbAvailability,
     nylasCalendarData,
-    duration
+    duration,
+    timezone
   );
 
   return (
