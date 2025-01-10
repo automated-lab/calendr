@@ -23,6 +23,8 @@ interface NylasCalendarResponse {
 
 async function getData(selectedDate: Date, username: string) {
   const currentDay = format(selectedDate, "EEEE");
+  console.log("Environment:", process.env.NODE_ENV);
+  console.log("Current day:", currentDay);
 
   const data = await prisma.availability.findFirst({
     where: {
@@ -44,6 +46,8 @@ async function getData(selectedDate: Date, username: string) {
       },
     },
   });
+
+  console.log("DB Availability data:", JSON.stringify(data, null, 2));
 
   if (!data?.User?.grantId || !data?.User?.grantEmail) {
     return {
@@ -127,6 +131,13 @@ async function calculateAvailableTimeSlots(
   duration: number,
   timezone: string
 ) {
+  console.log("\n=== Time Slot Calculation Debug ===");
+  console.log("Input date:", date);
+  console.log("Duration:", duration);
+  console.log("Timezone:", timezone);
+  console.log("DB Availability:", JSON.stringify(dbAvailability, null, 2));
+  console.log("Nylas Data:", JSON.stringify(nylasData, null, 2));
+
   const now = new Date();
   const selectedDate = new Date(date);
 
@@ -161,8 +172,14 @@ async function calculateAvailableTimeSlots(
   // Get all busy slots
   const busySlots =
     nylasData.data[0]?.timeSlots?.map((slot: FreeBusyTimeSlot) => {
+      const startDate = new Date(slot.startTime * 1000);
+      const endDate = new Date(slot.endTime * 1000);
+      console.log("\nBusy slot details:");
       console.log(
-        `Busy period: ${new Date(slot.startTime * 1000).toISOString()} to ${new Date(slot.endTime * 1000).toISOString()}`
+        `UTC:     ${startDate.toISOString()} to ${endDate.toISOString()}`
+      );
+      console.log(
+        `Local:   ${formatInTimeZone(startDate, timezone, "yyyy-MM-dd HH:mm:ss")} to ${formatInTimeZone(endDate, timezone, "yyyy-MM-dd HH:mm:ss")} (${timezone})`
       );
       return {
         start: slot.startTime,
