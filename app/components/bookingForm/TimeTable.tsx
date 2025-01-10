@@ -154,10 +154,6 @@ async function calculateAvailableTimeSlots(
   console.log("\n=== Time Slot Calculation Debug ===");
   console.log("Server time:", new Date().toISOString());
   console.log("Input date:", date);
-  console.log(
-    "Input date in user timezone:",
-    formatInTimeZone(new Date(date), timezone, "yyyy-MM-dd HH:mm:ssXXX")
-  );
 
   const now = new Date();
   const selectedDate = new Date(date);
@@ -166,43 +162,47 @@ async function calculateAvailableTimeSlots(
     return [];
   }
 
-  // Convert the DB times to the user's timezone
-  const fromTimeLocal = formatInTimeZone(
-    new Date(dbAvailability.fromTime),
-    timezone,
-    "HH:mm:ss"
-  );
-  const toTimeLocal = formatInTimeZone(
-    new Date(dbAvailability.toTime),
-    timezone,
-    "HH:mm:ss"
-  );
+  // Parse the DB times
+  const fromTime = new Date(dbAvailability.fromTime);
+  const toTime = new Date(dbAvailability.toTime);
 
-  // Parse hours and minutes from the local time strings
-  const [fromHours, fromMinutes] = fromTimeLocal.split(":").map(Number);
-  const [toHours, toMinutes] = toTimeLocal.split(":").map(Number);
-
-  // Create new dates in the user's timezone
+  // Create the availability window using the DB times
   const availableFromUtc = new Date(selectedDate);
-  availableFromUtc.setHours(fromHours, fromMinutes, 0, 0);
+  availableFromUtc.setUTCHours(
+    fromTime.getUTCHours(),
+    fromTime.getUTCMinutes(),
+    0,
+    0
+  );
 
   const availableToUtc = new Date(selectedDate);
-  availableToUtc.setHours(toHours, toMinutes, 0, 0);
+  availableToUtc.setUTCHours(
+    toTime.getUTCHours(),
+    toTime.getUTCMinutes(),
+    0,
+    0
+  );
 
-  // Handle day wraparound - if end time is before start time, it means it's the next day
-  if (availableToUtc < availableFromUtc) {
+  // Handle day wraparound
+  if (toTime.getUTCHours() < fromTime.getUTCHours()) {
     availableToUtc.setDate(availableToUtc.getDate() + 1);
   }
 
   console.log("Selected date:", selectedDate.toISOString());
-  console.log("DB from time:", dbAvailability.fromTime);
-  console.log("DB to time:", dbAvailability.toTime);
-  console.log("Local from time:", fromTimeLocal);
-  console.log("Local to time:", toTimeLocal);
   console.log("Processing date:", date);
   console.log("Timezone being used:", timezone);
-  console.log("Available from:", availableFromUtc.toISOString());
-  console.log("Available to:", availableToUtc.toISOString());
+  console.log("DB from time:", dbAvailability.fromTime);
+  console.log("DB to time:", dbAvailability.toTime);
+  console.log("Available from (UTC):", availableFromUtc.toISOString());
+  console.log(
+    "Available from (Local):",
+    formatInTimeZone(availableFromUtc, timezone, "yyyy-MM-dd HH:mm:ssXXX")
+  );
+  console.log("Available to (UTC):", availableToUtc.toISOString());
+  console.log(
+    "Available to (Local):",
+    formatInTimeZone(availableToUtc, timezone, "yyyy-MM-dd HH:mm:ssXXX")
+  );
 
   // Get all busy slots
   const busySlots =
