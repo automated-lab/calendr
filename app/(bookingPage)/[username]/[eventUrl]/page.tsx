@@ -36,6 +36,9 @@ async function getData(userName: string, eventUrl: string) {
               day: true,
               isActive: true,
             },
+            orderBy: {
+              day: "asc",
+            },
           },
         },
       },
@@ -62,6 +65,7 @@ async function getData(userName: string, eventUrl: string) {
     );
   }
 
+  console.log("Availability data:", data.User?.availability);
   return data;
 }
 

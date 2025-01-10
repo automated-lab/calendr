@@ -1,6 +1,6 @@
 // Server Component
 import prisma from "@/app/lib/db";
-import { addMinutes, format, isAfter, isBefore, addDays } from "date-fns";
+import { addMinutes, format, isBefore } from "date-fns";
 import { Prisma } from "@prisma/client";
 import { nylas } from "@/app/lib/nylas";
 import { formatInTimeZone } from "date-fns-tz";
@@ -62,28 +62,15 @@ async function getData(selectedDate: Date, username: string) {
 
   const timezone = data.User.timezone || "UTC";
 
-  // Create start/end of day in UTC
-  const startOfDay = new Date(
-    Date.UTC(
-      selectedDate.getFullYear(),
-      selectedDate.getMonth(),
-      selectedDate.getDate(),
-      0,
-      0,
-      0
-    )
-  );
+  // Create start/end of day in UTC for the SELECTED date
+  // Start from previous day to handle timezone differences
+  const startOfDay = new Date(selectedDate);
+  startOfDay.setUTCHours(0, 0, 0, 0);
+  startOfDay.setDate(startOfDay.getDate() - 1); // Start from previous day
 
-  const endOfDay = new Date(
-    Date.UTC(
-      selectedDate.getFullYear(),
-      selectedDate.getMonth(),
-      selectedDate.getDate(),
-      23,
-      59,
-      59
-    )
-  );
+  const endOfDay = new Date(selectedDate);
+  endOfDay.setUTCHours(23, 59, 59, 999);
+  endOfDay.setDate(endOfDay.getDate() + 1); // End at next day
 
   try {
     console.log(
@@ -147,92 +134,72 @@ async function calculateAvailableTimeSlots(
     return [];
   }
 
-  // Use the UTC times directly from DB but adjust to selected date
+  // Get the hours and minutes in the local timezone for the selected date
   const fromTime = new Date(dbAvailability.fromTime);
   const toTime = new Date(dbAvailability.toTime);
 
-  // Create date objects for the selected date's availability window
-  const availableFromUtc = new Date(
-    Date.UTC(
-      selectedDate.getFullYear(),
-      selectedDate.getMonth(),
-      selectedDate.getDate(),
-      fromTime.getUTCHours(),
-      fromTime.getUTCMinutes()
-    )
-  );
+  // Create new dates for the selected date using the hours/minutes from the DB times
+  const availableFromUtc = new Date(selectedDate);
+  availableFromUtc.setHours(fromTime.getHours(), fromTime.getMinutes(), 0, 0);
 
-  let availableToUtc = new Date(
-    Date.UTC(
-      selectedDate.getFullYear(),
-      selectedDate.getMonth(),
-      selectedDate.getDate(),
-      toTime.getUTCHours(),
-      toTime.getUTCMinutes()
-    )
-  );
+  const availableToUtc = new Date(selectedDate);
+  availableToUtc.setHours(toTime.getHours(), toTime.getMinutes(), 0, 0);
 
-  // Handle day wraparound if needed
+  // Handle day wraparound - if end time is before start time, it means it's the next day
   if (availableToUtc < availableFromUtc) {
-    availableToUtc = addDays(availableToUtc, 1);
+    availableToUtc.setDate(availableToUtc.getDate() + 1);
   }
 
+  console.log("Selected date:", selectedDate.toISOString());
+  console.log("DB from time:", dbAvailability.fromTime);
+  console.log("DB to time:", dbAvailability.toTime);
   console.log("Processing date:", date);
-  console.log("Available from (UTC):", availableFromUtc.toISOString());
-  console.log("Available to (UTC):", availableToUtc.toISOString());
+  console.log("Timezone being used:", timezone);
+  console.log("Available from:", availableFromUtc.toISOString());
+  console.log("Available to:", availableToUtc.toISOString());
 
-  // Store busy slots as epoch timestamps for direct comparison
+  // Get all busy slots
   const busySlots =
     nylasData.data[0]?.timeSlots?.map((slot: FreeBusyTimeSlot) => {
-      console.log(`Busy slot: ${slot.startTime} - ${slot.endTime}`);
-      return { start: slot.startTime, end: slot.endTime };
+      console.log(
+        `Busy period: ${new Date(slot.startTime * 1000).toISOString()} to ${new Date(slot.endTime * 1000).toISOString()}`
+      );
+      return {
+        start: slot.startTime,
+        end: slot.endTime,
+      };
     }) || [];
 
-  // Generate slots in UTC
+  // Generate available slots
   const allSlots = [];
   let currentSlot = availableFromUtc;
+
   while (isBefore(currentSlot, availableToUtc)) {
-    allSlots.push(new Date(currentSlot));
+    if (isBefore(currentSlot, now)) {
+      console.log(`Slot ${currentSlot.toISOString()} is in the past`);
+    } else {
+      const slotEnd = addMinutes(currentSlot, duration);
+      const slotStart = Math.floor(currentSlot.getTime() / 1000);
+      const slotEndTime = Math.floor(slotEnd.getTime() / 1000);
+
+      const isAvailable = !busySlots.some((busy) => {
+        const hasOverlap = slotStart < busy.end && slotEndTime > busy.start;
+        if (hasOverlap) {
+          console.log(
+            `OVERLAP: ${currentSlot.toISOString()} - ${slotEnd.toISOString()} overlaps with busy ${new Date(busy.start * 1000).toISOString()} - ${new Date(busy.end * 1000).toISOString()}`
+          );
+        }
+        return hasOverlap;
+      });
+
+      if (isAvailable) {
+        allSlots.push(new Date(currentSlot));
+      }
+    }
     currentSlot = addMinutes(new Date(currentSlot), duration);
   }
 
-  const freeSlots = allSlots.filter((slot) => {
-    const slotEnd = addMinutes(new Date(slot), duration);
-
-    // Compare with now in UTC
-    if (!isAfter(slot, now)) {
-      console.log(`Slot ${slot.toISOString()} is in the past`);
-      return false;
-    }
-
-    // Convert slot times to epochs for direct comparison
-    const slotEpoch = Math.floor(slot.getTime() / 1000);
-    const slotEndEpoch = Math.floor(slotEnd.getTime() / 1000);
-
-    // Check for overlap with busy slots using epochs
-    const isOverlapping = busySlots.some((busy) => {
-      const hasOverlap =
-        (slotEpoch > busy.start && slotEpoch < busy.end) || // Slot starts during busy period
-        (slotEndEpoch > busy.start && slotEndEpoch < busy.end) || // Slot ends during busy period
-        (slotEpoch <= busy.start && slotEndEpoch >= busy.end) || // Slot contains busy period
-        (busy.start <= slotEpoch && busy.end >= slotEndEpoch) || // Busy period contains slot
-        slotEpoch === busy.start || // Exact start match
-        slotEndEpoch === busy.end; // Exact end match
-
-      if (hasOverlap) {
-        console.log(
-          `Slot ${slotEpoch} - ${slotEndEpoch} overlaps with busy period ${busy.start} - ${busy.end}`
-        );
-      }
-
-      return hasOverlap;
-    });
-
-    return !isOverlapping;
-  });
-
-  // Convert free slots to display timezone
-  return freeSlots.map((slot) => formatInTimeZone(slot, timezone, "HH:mm"));
+  return allSlots.map((slot) => formatInTimeZone(slot, timezone, "HH:mm"));
 }
 
 export async function TimeTable({
