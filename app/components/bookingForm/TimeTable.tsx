@@ -242,28 +242,45 @@ async function calculateAvailableTimeSlots(
       console.log(
         `Slot Local: ${formatInTimeZone(currentSlot, timezone, "yyyy-MM-dd HH:mm:ssXXX")} - ${formatInTimeZone(slotEnd, timezone, "yyyy-MM-dd HH:mm:ssXXX")}`
       );
-      console.log(`Slot timestamps: ${slotStart} - ${slotEndTime}`);
 
+      // Check if this slot is within any busy period
       const isAvailable = !busySlots.some((busy) => {
-        console.log(
-          `Comparing against busy period: ${busy.start} - ${busy.end}`
+        // Convert all times to the user's timezone for comparison
+        const slotStartLocal = formatInTimeZone(
+          currentSlot,
+          timezone,
+          "yyyy-MM-dd"
         );
-        console.log(
-          `UTC: ${new Date(busy.start * 1000).toISOString()} - ${new Date(busy.end * 1000).toISOString()}`
+        const busyStartLocal = formatInTimeZone(
+          new Date(busy.start * 1000),
+          timezone,
+          "yyyy-MM-dd"
         );
-        console.log(
-          `Local: ${formatInTimeZone(new Date(busy.start * 1000), timezone, "yyyy-MM-dd HH:mm:ssXXX")} - ${formatInTimeZone(new Date(busy.end * 1000), timezone, "yyyy-MM-dd HH:mm:ssXXX")}`
+        const busyEndLocal = formatInTimeZone(
+          new Date(busy.end * 1000),
+          timezone,
+          "yyyy-MM-dd"
         );
 
-        const hasOverlap = slotStart < busy.end && slotEndTime > busy.start;
-        console.log(
-          `Overlap check: ${slotStart} < ${busy.end} && ${slotEndTime} > ${busy.start} = ${hasOverlap}`
-        );
+        // If the busy period is on this day in local timezone
+        if (
+          slotStartLocal === busyStartLocal ||
+          slotStartLocal === busyEndLocal
+        ) {
+          const hasOverlap = slotStart < busy.end && slotEndTime > busy.start;
 
-        if (hasOverlap) {
-          console.log("OVERLAP DETECTED!");
+          console.log(`Checking against busy period in ${timezone}:`);
+          console.log(
+            `Slot: ${formatInTimeZone(currentSlot, timezone, "HH:mm")} - ${formatInTimeZone(slotEnd, timezone, "HH:mm")}`
+          );
+          console.log(
+            `Busy: ${formatInTimeZone(new Date(busy.start * 1000), timezone, "HH:mm")} - ${formatInTimeZone(new Date(busy.end * 1000), timezone, "HH:mm")}`
+          );
+          console.log(`Overlap: ${hasOverlap}`);
+
+          return hasOverlap;
         }
-        return hasOverlap;
+        return false;
       });
 
       if (isAvailable) {
