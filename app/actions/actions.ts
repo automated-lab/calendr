@@ -16,12 +16,7 @@ import { nylas } from "../lib/nylas";
 import { SubmissionResult } from "@conform-to/react";
 import { sendEventCreatedEmail } from "../lib/resend";
 import { Day } from "@prisma/client";
-
-const providerMap = {
-  "Google Meet": "Google Meet",
-  "Zoom Meeting": "Zoom Meeting",
-  "Microsoft Teams": "Microsoft Teams",
-} as const;
+import { format } from "date-fns";
 
 export async function handleGoogleSignIn() {
   await signIn("google");
@@ -274,43 +269,67 @@ export async function createMeetingAction(formData: FormData) {
   const formTime = formData.get("fromTime") as string;
   const meetingLength = Number(formData.get("meetingLength"));
   const eventDate = formData.get("eventDate") as string;
-  const provider = formData.get("provider") as string;
 
-  // Create a local datetime string and parse it in the user's timezone
-  const localDateTime = `${eventDate}T${formTime}:00`;
-  const userTimezone = getUserData.timezone || "UTC";
-
-  // Convert to UTC for storage
-  const startDateTime = new Date(`${localDateTime}Z`);
+  const startDateTime = new Date(`${eventDate}T${formTime}:00`);
   const endDateTime = new Date(startDateTime.getTime() + meetingLength * 60000);
 
-  await nylas.events.create({
-    identifier: getUserData?.grantId as string,
-    requestBody: {
-      title: eventTypeData?.title,
-      description: eventTypeData?.description,
-      when: {
-        startTime: Math.floor(startDateTime.getTime() / 1000),
-        endTime: Math.floor(endDateTime.getTime() / 1000),
-        timezone: userTimezone,
-      },
-      conferencing: {
-        autocreate: {},
-        provider: providerMap[provider as keyof typeof providerMap],
-      },
-      participants: [
-        {
-          name: formData.get("name") as string,
-          email: formData.get("email") as string,
-          status: "yes",
-        },
-      ],
-    },
-    queryParams: {
-      calendarId: getUserData?.grantEmail as string,
-      notifyParticipants: true,
-    },
+  console.log("Debug - Meeting Creation:", {
+    formTime,
+    eventDate,
+    startDateTime: startDateTime.toISOString(),
+    endDateTime: endDateTime.toISOString(),
+    timezone: getUserData.timezone || "UTC",
   });
+
+  const requestBody = {
+    title: eventTypeData?.title,
+    description: eventTypeData?.description,
+    when: {
+      start_date: format(startDateTime, "yyyy-MM-dd"),
+      end_date: format(endDateTime, "yyyy-MM-dd"),
+    },
+    conferencing: {
+      autocreate: {},
+      provider: "Google Meet",
+    },
+    participants: [
+      {
+        name: formData.get("name") as string,
+        email: formData.get("email") as string,
+        status: "yes",
+      },
+    ],
+    notify_participants: true,
+  };
+
+  console.log("Debug - Request Body:", JSON.stringify(requestBody, null, 2));
+
+  try {
+    const response = await fetch(
+      `${process.env.NYLAS_API_URI}/v3/grants/${getUserData.grantId}/events?calendar_id=${getUserData.grantEmail}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.NYLAS_CLIENT_SECRET}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(requestBody),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      console.error(
+        "Nylas API Error Full Response:",
+        JSON.stringify(error, null, 2)
+      );
+      throw new Error(JSON.stringify(error));
+    }
+  } catch (error) {
+    console.error("Failed to create meeting:", error);
+    throw error;
+  }
 
   return redirect(`/success`);
 }
