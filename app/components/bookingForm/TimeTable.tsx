@@ -8,6 +8,7 @@ import {
   parse,
   fromUnixTime,
 } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 import { Prisma } from "@prisma/client";
 import { nylas } from "@/app/lib/nylas";
 import ClientTimeTable from "./ClientTimeTable.client";
@@ -39,14 +40,8 @@ interface AvailabilityData {
 }
 
 async function getData(selectedDate: Date, username: string) {
-  const currentDay = format(selectedDate, "EEEE");
-  console.log("=== getData Debug ===");
-  console.log("Selected date:", selectedDate);
-  console.log("Current day:", currentDay);
-
   const data = (await prisma.availability.findFirst({
     where: {
-      day: currentDay as Prisma.EnumDayFilter,
       User: {
         username: username,
       },
@@ -66,7 +61,34 @@ async function getData(selectedDate: Date, username: string) {
   })) as AvailabilityData | null;
 
   const timezone = data?.User?.timezone || "UTC";
+  const currentDay = formatInTimeZone(selectedDate, timezone, "EEEE");
+
+  console.log("=== getData Debug ===");
+  console.log("Selected date:", selectedDate);
+  console.log("Current day:", currentDay);
   console.log("User timezone:", timezone);
+
+  // Now query with the correct day
+  const availabilityData = await prisma.availability.findFirst({
+    where: {
+      day: currentDay as Prisma.EnumDayFilter,
+      User: {
+        username: username,
+      },
+    },
+    select: {
+      fromTime: true,
+      toTime: true,
+      id: true,
+      User: {
+        select: {
+          grantEmail: true,
+          grantId: true,
+          timezone: true,
+        },
+      },
+    },
+  });
 
   // Create start/end of day in the user's timezone
   const startOfDay = new Date(selectedDate);
@@ -74,15 +96,18 @@ async function getData(selectedDate: Date, username: string) {
   const endOfDay = new Date(selectedDate);
   endOfDay.setHours(23, 59, 59, 999);
 
-  console.log("DB Availability data:", JSON.stringify(data, null, 2));
+  console.log(
+    "DB Availability data:",
+    JSON.stringify(availabilityData, null, 2)
+  );
 
-  if (!data?.User?.grantId || !data?.User?.grantEmail) {
+  if (!availabilityData?.User?.grantId || !availabilityData?.User?.grantEmail) {
     return {
-      data,
+      data: availabilityData,
       nylasCalendarData: {
         data: [
           {
-            email: data?.User?.grantEmail || "",
+            email: availabilityData?.User?.grantEmail || "",
             timeSlots: [],
             object: "free_busy",
           },
@@ -93,26 +118,26 @@ async function getData(selectedDate: Date, username: string) {
 
   try {
     const nylasCalendarData = await nylas.calendars.getFreeBusy({
-      identifier: data.User.grantId,
+      identifier: availabilityData.User.grantId,
       requestBody: {
         startTime: Math.floor(startOfDay.getTime() / 1000),
         endTime: Math.floor(endOfDay.getTime() / 1000),
-        emails: [data.User.grantEmail],
+        emails: [availabilityData.User.grantEmail],
       },
     });
 
     return {
-      data,
+      data: availabilityData,
       nylasCalendarData: nylasCalendarData as NylasCalendarResponse,
     };
   } catch (error) {
     console.error("Nylas API Error:", error);
     return {
-      data,
+      data: availabilityData,
       nylasCalendarData: {
         data: [
           {
-            email: data.User.grantEmail,
+            email: availabilityData.User.grantEmail,
             timeSlots: [],
             object: "free_busy",
           },
