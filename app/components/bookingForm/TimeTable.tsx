@@ -154,30 +154,31 @@ async function calculateAvailableTimeSlots(
     return [];
   }
 
+  // Get the timezone offset in minutes for the selected date
+  const tzOffset = selectedDate.getTimezoneOffset();
+
   // Use the UTC times directly from DB but adjust to selected date
   const fromTime = new Date(dbAvailability.fromTime);
   const toTime = new Date(dbAvailability.toTime);
 
-  // Create UTC date objects for the selected date's availability window
+  // Create date objects for the selected date's availability window, adjusting for timezone
   const availableFromUtc = new Date(
-    Date.UTC(
-      selectedDate.getFullYear(),
-      selectedDate.getMonth(),
-      selectedDate.getDate(),
-      fromTime.getUTCHours(),
-      fromTime.getUTCMinutes()
-    )
+    selectedDate.getFullYear(),
+    selectedDate.getMonth(),
+    selectedDate.getDate(),
+    fromTime.getUTCHours(),
+    fromTime.getUTCMinutes()
   );
+  availableFromUtc.setMinutes(availableFromUtc.getMinutes() - tzOffset);
 
   let availableToUtc = new Date(
-    Date.UTC(
-      selectedDate.getFullYear(),
-      selectedDate.getMonth(),
-      selectedDate.getDate(),
-      toTime.getUTCHours(),
-      toTime.getUTCMinutes()
-    )
+    selectedDate.getFullYear(),
+    selectedDate.getMonth(),
+    selectedDate.getDate(),
+    toTime.getUTCHours(),
+    toTime.getUTCMinutes()
   );
+  availableToUtc.setMinutes(availableToUtc.getMinutes() - tzOffset);
 
   // Handle day wraparound if needed
   if (availableToUtc < availableFromUtc) {
@@ -185,6 +186,7 @@ async function calculateAvailableTimeSlots(
   }
 
   console.log("Processing date:", date);
+  console.log("Timezone offset (minutes):", tzOffset);
   console.log("Available from (UTC):", availableFromUtc.toISOString());
   console.log("Available to (UTC):", availableToUtc.toISOString());
 
@@ -238,7 +240,7 @@ async function calculateAvailableTimeSlots(
     return !isOverlapping;
   });
 
-  // Only convert to display timezone at the very end
+  // Convert free slots to display timezone
   return freeSlots.map((slot) => formatInTimeZone(slot, timezone, "HH:mm"));
 }
 
