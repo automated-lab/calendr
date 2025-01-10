@@ -2,13 +2,20 @@ import { requireUser } from "@/app/lib/hooks";
 import prisma from "@/app/lib/db";
 import AvailabilityForm from "./AvailabilityForm";
 
-type Day = "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday" | "Sunday";
+type Day =
+  | "Monday"
+  | "Tuesday"
+  | "Wednesday"
+  | "Thursday"
+  | "Friday"
+  | "Saturday"
+  | "Sunday";
 
 interface Availability {
   id: string;
   day: Day;
-  fromTime: Date;
-  toTime: Date;
+  fromTime: string;
+  toTime: string;
   isActive: boolean;
   userId: string | null;
   createdAt: Date;
@@ -33,9 +40,9 @@ async function getData(userId: string) {
     timezone: data.timezone,
     availability: data.availability.map((item: Availability) => ({
       ...item,
-      fromTime: item.fromTime.toISOString(),
-      toTime: item.toTime.toISOString(),
-    }))
+      fromTime: item.fromTime,
+      toTime: item.toTime,
+    })),
   };
 }
 
@@ -43,5 +50,10 @@ export default async function AvailabilityPage() {
   const session = await requireUser();
   const data = await getData(session.user?.id as string);
 
-  return <AvailabilityForm initialData={data.availability} userTimezone={data.timezone} />;
+  return (
+    <AvailabilityForm
+      initialData={data.availability}
+      userTimezone={data.timezone}
+    />
+  );
 }

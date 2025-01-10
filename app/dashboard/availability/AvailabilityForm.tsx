@@ -20,8 +20,6 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { times } from "@/app/lib/times";
 import { updateAvailabilityAction } from "@/app/actions/actions";
-import { formatInTimeZone } from 'date-fns-tz';
-import { getTimezoneOffset } from 'date-fns-tz';
 
 interface Availability {
   id: string;
@@ -46,19 +44,15 @@ const dayOrder = [
   "Sunday",
 ];
 
-export default function AvailabilityForm({
-  initialData,
-  userTimezone,
-}: Props) {
+export default function AvailabilityForm({ initialData, userTimezone }: Props) {
   const sortedInitialData = [...initialData].sort(
     (a, b) => dayOrder.indexOf(a.day) - dayOrder.indexOf(b.day)
   );
 
   const [availabilities, setAvailabilities] = useState(sortedInitialData);
 
-  const formatTime = (isoString: string) => {
-    const date = new Date(isoString);
-    return formatInTimeZone(date, userTimezone, 'HH:mm');
+  const formatTime = (timeString: string) => {
+    return timeString; // Time strings are already in HH:mm format
   };
 
   const handleSwitchChange = async (id: string, checked: boolean) => {
@@ -89,34 +83,11 @@ export default function AvailabilityForm({
     const availability = availabilities.find((a) => a.id === id);
     if (!availability) return;
 
-    const [hours, minutes] = value.split(":").map(Number);
-    
-    // Create a date object for today
-    const date = new Date();
-    date.setHours(hours, minutes, 0, 0);
-    
-    // Get the timezone offset in minutes for the user's timezone
-    const tzOffset = getTimezoneOffset(userTimezone, date) / 1000 / 60;
-    
-    // Create UTC time by adjusting for the timezone offset
-    // We subtract the offset because we're converting from local to UTC
-    // For example: Sydney is +11, so 9:00 AM Sydney = 22:00 UTC (previous day)
-    const utcDate = new Date(Date.UTC(
-      date.getFullYear(),
-      date.getMonth(),
-      date.getDate(),
-      hours - (tzOffset / 60),
-      minutes,
-      0,
-      0
-    ));
-    const utcTime = utcDate.toISOString();
-
     const updates = {
       id,
       isActive: availability.isActive,
-      fromTime: type === "fromTime" ? utcTime : availability.fromTime,
-      toTime: type === "toTime" ? utcTime : availability.toTime,
+      fromTime: type === "fromTime" ? value : availability.fromTime,
+      toTime: type === "toTime" ? value : availability.toTime,
     };
 
     const formData = new FormData();
@@ -125,9 +96,7 @@ export default function AvailabilityForm({
     await updateAvailabilityAction(formData);
 
     setAvailabilities((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, [type]: utcTime } : item
-      )
+      prev.map((item) => (item.id === id ? { ...item, [type]: value } : item))
     );
   };
 
@@ -135,7 +104,9 @@ export default function AvailabilityForm({
     <Card>
       <CardHeader>
         <CardTitle>Availability</CardTitle>
-        <CardDescription>Set your weekly availability ({userTimezone})</CardDescription>
+        <CardDescription>
+          Set your weekly availability ({userTimezone})
+        </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-y-4">
         {availabilities.map((item) => {

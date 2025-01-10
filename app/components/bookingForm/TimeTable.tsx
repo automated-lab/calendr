@@ -10,11 +10,7 @@ import {
 } from "date-fns";
 import { Prisma } from "@prisma/client";
 import { nylas } from "@/app/lib/nylas";
-import { formatInTimeZone } from "date-fns-tz";
 import ClientTimeTable from "./ClientTimeTable.client";
-
-// Set timezone for server-side operations
-process.env.TZ = process.env.TIMEZONE || "UTC";
 
 interface FreeBusyTimeSlot {
   startTime: number;
@@ -31,16 +27,24 @@ interface NylasCalendarResponse {
   data: FreeBusyData[];
 }
 
+interface AvailabilityData {
+  fromTime: string;
+  toTime: string;
+  id: string;
+  User: {
+    grantEmail: string | null;
+    grantId: string | null;
+    timezone: string;
+  } | null;
+}
+
 async function getData(selectedDate: Date, username: string) {
   const currentDay = format(selectedDate, "EEEE");
   console.log("=== getData Debug ===");
-  console.log("Server location: Washington, D.C.");
-  console.log("Server time:", new Date().toISOString());
-  console.log("Selected date (raw):", selectedDate);
-  console.log("Selected date (ISO):", selectedDate.toISOString());
+  console.log("Selected date:", selectedDate);
   console.log("Current day:", currentDay);
 
-  const data = await prisma.availability.findFirst({
+  const data = (await prisma.availability.findFirst({
     where: {
       day: currentDay as Prisma.EnumDayFilter,
       User: {
@@ -59,35 +63,16 @@ async function getData(selectedDate: Date, username: string) {
         },
       },
     },
-  });
+  })) as AvailabilityData | null;
 
   const timezone = data?.User?.timezone || "UTC";
   console.log("User timezone:", timezone);
-  console.log(
-    "Selected date in user timezone:",
-    formatInTimeZone(selectedDate, timezone, "yyyy-MM-dd HH:mm:ssXXX")
-  );
 
-  // Create start/end of day in UTC for the SELECTED date
-  // Start from previous day to handle timezone differences
+  // Create start/end of day in the user's timezone
   const startOfDay = new Date(selectedDate);
-  startOfDay.setUTCHours(0, 0, 0, 0);
-  startOfDay.setDate(startOfDay.getDate() - 1); // Start from previous day
-
+  startOfDay.setHours(0, 0, 0, 0);
   const endOfDay = new Date(selectedDate);
-  endOfDay.setUTCHours(23, 59, 59, 999);
-  endOfDay.setDate(endOfDay.getDate() + 1); // End at next day
-
-  console.log("Fetch window start (UTC):", startOfDay.toISOString());
-  console.log(
-    "Fetch window start (User TZ):",
-    formatInTimeZone(startOfDay, timezone, "yyyy-MM-dd HH:mm:ssXXX")
-  );
-  console.log("Fetch window end (UTC):", endOfDay.toISOString());
-  console.log(
-    "Fetch window end (User TZ):",
-    formatInTimeZone(endOfDay, timezone, "yyyy-MM-dd HH:mm:ssXXX")
-  );
+  endOfDay.setHours(23, 59, 59, 999);
 
   console.log("DB Availability data:", JSON.stringify(data, null, 2));
 
@@ -107,12 +92,6 @@ async function getData(selectedDate: Date, username: string) {
   }
 
   try {
-    console.log(
-      `Fetching busy times for ${format(selectedDate, "yyyy-MM-dd")} in ${timezone}`
-    );
-    console.log(`Start time (UTC): ${startOfDay.toISOString()}`);
-    console.log(`End time (UTC): ${endOfDay.toISOString()}`);
-
     const nylasCalendarData = await nylas.calendars.getFreeBusy({
       identifier: data.User.grantId,
       requestBody: {
@@ -121,8 +100,6 @@ async function getData(selectedDate: Date, username: string) {
         emails: [data.User.grantEmail],
       },
     });
-
-    console.log("Nylas Response:", JSON.stringify(nylasCalendarData, null, 2));
 
     return {
       data,
@@ -158,28 +135,22 @@ async function calculateAvailableTimeSlots(
     toTime: string | undefined;
   },
   nylasData: NylasCalendarResponse,
-  duration: number,
-  timezone: string
+  duration: number
 ) {
   const now = new Date();
 
-  // Convert DB availability to Date objects in the user's timezone
+  // Convert time strings to Date objects for comparison
   const availableFrom = parse(
-    `${date} ${format(new Date(dbAvailability.fromTime!), "HH:mm")}`,
+    `${date} ${dbAvailability.fromTime}`,
     "yyyy-MM-dd HH:mm",
     new Date()
   );
 
   const availableTo = parse(
-    `${date} ${format(new Date(dbAvailability.toTime!), "HH:mm")}`,
+    `${date} ${dbAvailability.toTime}`,
     "yyyy-MM-dd HH:mm",
     new Date()
   );
-
-  // Handle day wraparound
-  if (availableTo < availableFrom) {
-    availableTo.setDate(availableTo.getDate() + 1);
-  }
 
   // Extract busy slots from Nylas data
   const busySlots =
@@ -211,13 +182,13 @@ async function calculateAvailableTimeSlots(
     );
 
     if (isAvailable) {
-      allSlots.push(new Date(currentSlot));
+      allSlots.push(format(currentSlot, "HH:mm"));
     }
 
     currentSlot = addMinutes(currentSlot, duration);
   }
 
-  return allSlots.map((slot) => formatInTimeZone(slot, timezone, "HH:mm"));
+  return allSlots;
 }
 
 export async function TimeTable({
@@ -228,17 +199,19 @@ export async function TimeTable({
   const { data, nylasCalendarData } = await getData(selectedDate, userName);
 
   const formattedDate = format(selectedDate, "yyyy-MM-dd");
-  const dbAvailability = {
-    fromTime: data?.fromTime?.toISOString(),
-    toTime: data?.toTime?.toISOString(),
+  const dbAvailability: {
+    fromTime: string | undefined;
+    toTime: string | undefined;
+  } = {
+    fromTime: data?.fromTime || undefined,
+    toTime: data?.toTime || undefined,
   };
 
   const availableSlotsHostTz = await calculateAvailableTimeSlots(
     formattedDate,
     dbAvailability,
     nylasCalendarData,
-    duration,
-    data?.User?.timezone || "UTC"
+    duration
   );
 
   return (
